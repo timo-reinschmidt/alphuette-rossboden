@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Reservation bearbeiten{% endblock %}
+
+{% block content %}
+<h2>Reservation bearbeiten</h2>
+
+<form method="POST" class="w3-container w3-card-4 w3-light-grey w3-padding">
+
+  <!-- Standardfelder -->
+  <label>Name</label>
+  <input class="w3-input w3-margin-bottom" type="text" name="name" value="{{ booking.name }}" required>
+
+  <label>Geburtsdatum</label>
+  <input class="w3-input w3-margin-bottom" type="date" name="birthdate" value="{{ booking.birthdate }}" required>
+
+  <label>E-Mail</label>
+  <input class="w3-input w3-margin-bottom" type="email" name="email" value="{{ booking.email }}">
+
+  <label>Telefon</label>
+  <input class="w3-input w3-margin-bottom" type="text" name="phone" value="{{ booking.phone }}">
+
+  <label>Zimmer</label>
+  <select class="w3-select w3-margin-bottom" name="room" required>
+    {% for room in rooms %}
+      <option value="{{ room }}" {% if room == booking.room %}selected{% endif %}>{{ room }}</option>
+    {% endfor %}
+  </select>
+
+  <label>Anzahl Gäste</label>
+  <input class="w3-input w3-margin-bottom" type="number" name="guests" id="guests" value="{{ booking.guests }}" min="1" required>
+
+  <label>Anreise</label>
+  <input class="w3-input w3-margin-bottom" type="date" name="arrival" value="{{ booking.arrival }}" required>
+
+  <label>Abreise</label>
+  <input class="w3-input w3-margin-bottom" type="date" name="departure" value="{{ booking.departure }}" required>
+
+  <label>Frühstück</label>
+  <input class="w3-check" type="checkbox" name="breakfast" {% if booking.breakfast == 'on' %}checked{% endif %}>
+  <label>Abendessen</label>
+  <input class="w3-check" type="checkbox" name="dinner" {% if booking.dinner == 'on' %}checked{% endif %}>
+
+  <label>Status</label>
+  <select class="w3-select w3-margin-bottom" name="status">
+    {% for s in ['Option', 'Bestätigt', 'Checked In', 'Storniert'] %}
+      <option value="{{ s }}" {% if booking.status == s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+
+  <div id="guest-details">
+    {% for guest in guests %}
+      <label>Name Mitreisender {{ loop.index }}</label>
+      <input class="w3-input w3-margin-bottom" name="guest_name_{{ loop.index }}" value="{{ guest.name }}">
+      <label>Geburtsdatum Mitreisender {{ loop.index }}</label>
+      <input type="date" class="w3-input w3-margin-bottom" name="guest_birth_{{ loop.index }}" value="{{ guest.birthdate }}">
+    {% endfor %}
+  </div>
+
+  <div class="w3-text-red w3-margin-top">
+    <strong>Preisvorschau: CHF <span id="price-preview">0.00</span></strong>
+  </div>
+
+  <button class="w3-button w3-blue w3-margin-top" type="submit">Speichern</button>
+</form>
+
+<form method="post" action="/delete/{{ booking.id }}" onsubmit="return confirm('Buchung wirklich stornieren?');">
+  <button class="w3-button w3-red w3-margin-top">Buchung stornieren</button>
+</form>
+
+<script src="/static/main.js"></script>
+{% endblock %}

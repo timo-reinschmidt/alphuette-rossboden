@@ -24,7 +24,20 @@ CREATE TABLE IF NOT EXISTS bookings (
     arrival TEXT,
     departure TEXT,
     breakfast TEXT,
-    dinner TEXT
+    dinner TEXT,
+    email TEXT,
+    phone TEXT,
+    status TEXT DEFAULT 'Option'
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS guests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id TEXT,
+    name TEXT,
+    birthdate TEXT,
+    FOREIGN KEY (booking_id) REFERENCES bookings(id)
 )
 """)
 

@@ -1,27 +1,28 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>Übersicht</title>
-  <link rel="stylesheet" href="/static/w3.css">
-</head>
-<body>
-  <div class="w3-bar w3-dark-grey">
-    <a href="/" class="w3-bar-item w3-button">Kalenderübersicht</a>
-    <a href="/new" class="w3-bar-item w3-button">Neue Reservation</a>
-    <a href="/logout" class="w3-bar-item w3-button w3-right">Logout</a>
-  </div>
-  <div class="w3-container">
-    <h2>Reservationen</h2>
-    <ul class="w3-ul w3-card-4">
-      {% for b in bookings %}
-      <li class="w3-padding">
-        <strong>{{ b['name'] }}</strong> – {{ b['room'] }}, {{ b['guests'] }} Pers.<br>
-        {{ b['arrival'] }} bis {{ b['departure'] }}<br>
-        Frühstück: {{ b['breakfast'] }}, Abendessen: {{ b['dinner'] }}
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Reservationen{% endblock %}
+
+{% block content %}
+<h2>Reservationen</h2>
+
+<a href="/export" class="w3-button w3-green w3-margin-bottom">Export als Excel</a>
+
+<h3 class="w3-text-teal">🟢 Im Haus</h3>
+{% for booking in lists.in_house %}
+  {% include 'partials/booking_card.html' %}
+{% endfor %}
+
+<h3 class="w3-text-green">🟡 Anstehende Reservationen</h3>
+{% for booking in lists.upcoming %}
+  {% include 'partials/booking_card.html' %}
+{% endfor %}
+
+<h3 class="w3-text-gray">⚪ Vergangene Reservationen</h3>
+{% for booking in lists.past %}
+  {% include 'partials/booking_card.html' %}
+{% endfor %}
+
+<h3 class="w3-text-red">🔴 Stornierte Reservationen</h3>
+{% for booking in lists.cancelled %}
+  {% include 'partials/booking_card.html' %}
+{% endfor %}
+{% endblock %}

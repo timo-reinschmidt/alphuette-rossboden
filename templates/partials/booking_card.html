@@ -1,0 +1,9 @@
+<div class="w3-card w3-padding w3-margin-bottom w3-white">
+  <b>{{ booking.name }}</b> – {{ booking.room }}, {{ booking.guests }} Pers. ({{ booking.age_group }})<br>
+  {{ booking.arrival }} bis {{ booking.departure }}<br>
+  Frühstück: {{ booking.breakfast }}, Abendessen: {{ booking.dinner }}<br>
+  E-Mail: {{ booking.email or '–' }}, Telefon: {{ booking.phone or '–' }}<br>
+  <b>Status:</b> {{ booking.status or 'Option' }}<br>
+  <b>Preis: CHF {{ booking.total_price }}</b><br>
+  <a href="/edit/{{ booking.id }}" class="w3-button w3-blue w3-small w3-margin-top">Bearbeiten</a>
+</div>
