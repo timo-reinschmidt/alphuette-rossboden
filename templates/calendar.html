@@ -3,30 +3,45 @@
 {% block title %}Kalenderübersicht{% endblock %}
 
 {% block head %}
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
-  <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
+    <link rel="stylesheet" href="/static/styles.css">
 {% endblock %}
 
 {% block content %}
-<h2>Kalenderübersicht</h2>
+    <h2>Kalenderübersicht</h2>
 
-<div class="room-legend">
-  <div class="room-legend-item"><div class="legend-box room-doppel"></div> Doppelzimmer</div>
-  <div class="room-legend-item"><div class="legend-box room-vz1"></div> Viererzimmer 1</div>
-  <div class="room-legend-item"><div class="legend-box room-vz2"></div> Viererzimmer 2</div>
-  <div class="room-legend-item"><div class="legend-box room-sz1"></div> Sechserzimmer 1</div>
-  <div class="room-legend-item"><div class="legend-box room-sz2"></div> Sechserzimmer 2</div>
-</div>
+    <div class="room-legend">
+        <div class="room-legend-item">
+            <div class="legend-box room-doppel"></div>
+            Doppelzimmer
+        </div>
+        <div class="room-legend-item">
+            <div class="legend-box room-vz1"></div>
+            4er-Zimmer 1
+        </div>
+        <div class="room-legend-item">
+            <div class="legend-box room-vz2"></div>
+            4er-Zimmer 2
+        </div>
+        <div class="room-legend-item">
+            <div class="legend-box room-sz1"></div>
+            6er-Zimmer 1
+        </div>
+        <div class="room-legend-item">
+            <div class="legend-box room-sz2"></div>
+            6er-Zimmer 2
+        </div>
+    </div>
 
-<div class="status-legend">
-  <span><span class="status-dot status-option"></span> Option</span>
-  <span><span class="status-dot status-confirmed"></span> Bestätigt</span>
-  <span><span class="status-dot status-checkedin"></span> Checked In</span>
-  <span><span class="status-dot status-cancelled"></span> Storniert</span>
-</div>
+    <div class="status-legend">
+        <span><span class="status-dot status-option"></span> Option</span>
+        <span><span class="status-dot status-confirmed"></span> Bestätigt</span>
+        <span><span class="status-dot status-checkedin"></span> Checked In</span>
+        <span><span class="status-dot status-cancelled"></span> Storniert</span>
+    </div>
 
-<div id="calendar"></div>
-<script src="/static/main.js"></script>
+    <div id="calendar"></div>
+    <script src="/static/main.js"></script>
 {% endblock %}

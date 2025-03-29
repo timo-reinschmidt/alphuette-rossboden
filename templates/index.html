@@ -2,27 +2,36 @@
 {% block title %}Reservationen{% endblock %}
 
 {% block content %}
-<h2>Reservationen</h2>
+    <h2>Reservationen</h2>
 
-<a href="/export" class="w3-button w3-green w3-margin-bottom">Export als Excel</a>
+    <a href="/export" class="w3-button w3-green w3-margin-bottom">Export als Excel</a>
 
-<h3 class="w3-text-teal">🟢 Im Haus</h3>
-{% for booking in lists.in_house %}
-  {% include 'partials/booking_card.html' %}
-{% endfor %}
+    <div class="w3-container w3-margin-bottom">
+        <input type="text" id="searchInput" class="w3-input w3-border" placeholder="Suche nach Buchungen...">
+    </div>
+    <div id="result-list" class="w3-container">
+        <!-- Hier erscheinen die gefilterten Ergebnisse -->
+    </div>
 
-<h3 class="w3-text-green">🟡 Anstehende Reservationen</h3>
-{% for booking in lists.upcoming %}
-  {% include 'partials/booking_card.html' %}
-{% endfor %}
+    <h3 class="w3-text-teal">🟢 Im Haus</h3>
+    {% for booking in lists.in_house %}
+        {% include 'partials/booking_card.html' %}
+    {% endfor %}
 
-<h3 class="w3-text-gray">⚪ Vergangene Reservationen</h3>
-{% for booking in lists.past %}
-  {% include 'partials/booking_card.html' %}
-{% endfor %}
+    <h3 class="w3-text-green">🟡 Anstehende Reservationen</h3>
+    {% for booking in lists.upcoming %}
+        {% include 'partials/booking_card.html' %}
+    {% endfor %}
 
-<h3 class="w3-text-red">🔴 Stornierte Reservationen</h3>
-{% for booking in lists.cancelled %}
-  {% include 'partials/booking_card.html' %}
-{% endfor %}
+    <h3 class="w3-text-gray">⚪ Vergangene Reservationen</h3>
+    {% for booking in lists.past %}
+        {% include 'partials/booking_card.html' %}
+    {% endfor %}
+
+    <h3 class="w3-text-red">🔴 Stornierte Reservationen</h3>
+    {% for booking in lists.cancelled %}
+        {% include 'partials/booking_card.html' %}
+    {% endfor %}
+
+    <script src="/static/main.js"></script>
 {% endblock %}
