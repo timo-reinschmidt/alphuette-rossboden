@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>{% block title %}Alphütte Rossboden{% endblock %}</title>
-  <link rel="stylesheet" href="/static/w3.css">
-  {% block head %}{% endblock %}
+    <meta charset="UTF-8">
+    <title>{% block title %}Alphütte Rossboden{% endblock %}</title>
+    <link rel="stylesheet" href="/static/w3.css">
+    <link rel="stylesheet" href="/static/styles.css">
+    {% block head %}{% endblock %}
 </head>
 <body>
-
-<div class="w3-bar w3-dark-grey">
-  <a href="/" class="w3-bar-item w3-button">Reservationen</a>
-  <a href="/new" class="w3-bar-item w3-button">Neue Reservation</a>
-  <a href="/calendar" class="w3-bar-item w3-button">Kalender</a>
-  <a href="/logout" class="w3-bar-item w3-button w3-right">Logout</a>
-</div>
+{% if 'login' not in request.endpoint %}
+    <div class="w3-bar w3-blue w3-large">
+        <a href="/" class="w3-bar-item w3-button w3-hover-opacity">Reservierungen</a>
+        <a href="/new" class="w3-bar-item w3-button w3-hover-opacity">Neue Reservation</a>
+        <a href="/calendar" class="w3-bar-item w3-button w3-hover-opacity">Kalender</a>
+        <a href="/logout" class="w3-bar-item w3-button w3-hover-opacity w3-right">Logout</a>
+    </div>
+{% endif %}
 
 <div class="w3-container" style="padding: 2em;">
-  {% block content %}{% endblock %}
+    {% block content %}{% endblock %}
 </div>
 
 </body>

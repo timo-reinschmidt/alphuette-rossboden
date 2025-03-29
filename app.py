@@ -1,10 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify, send_file
+import io
 import sqlite3
-from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from datetime import datetime, date, timedelta
+
 import pandas as pd
-import io
+from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify, send_file
+from werkzeug.security import check_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'rossboden_secret'
@@ -12,20 +13,21 @@ app.secret_key = 'rossboden_secret'
 DATABASE = 'database.db'
 
 rooms = {
-    "Doppelzimmer": 1,
-    "Viererzimmer 1": 2,
-    "Viererzimmer 2": 2,
-    "Sechserzimmer 1": 2,
-    "Sechserzimmer 2": 2
+    "Doppelzimmer": 2,
+    "Viererzimmer 1": 4,
+    "Viererzimmer 2": 4,
+    "Sechserzimmer 1": 6,
+    "Sechserzimmer 2": 6
 }
 
 room_groups = {
     "Doppelzimmer": "Doppelzimmer",
-    "Viererzimmer 1": "Viererzimmer",
-    "Viererzimmer 2": "Viererzimmer",
-    "Sechserzimmer 1": "Sechserzimmer",
-    "Sechserzimmer 2": "Sechserzimmer"
+    "4er-Zimmer 1": "Viererzimmer",
+    "4er-Zimmer 2": "Viererzimmer",
+    "6er-Zimmer 1": "Sechserzimmer",
+    "6er-Zimmer 2": "Sechserzimmer"
 }
+
 
 def get_db():
     db = getattr(g, '_database', None)
@@ -34,11 +36,13 @@ def get_db():
         db.row_factory = sqlite3.Row
     return db
 
+
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
+
 
 def get_age_distribution(booking_id, main_birthdate):
     today = date.today()
@@ -67,6 +71,7 @@ def get_age_distribution(booking_id, main_birthdate):
     if baby: result.append(f"{baby} Baby")
     return ', '.join(result), (erw, kind, baby)
 
+
 def calculate_price(arrival, departure, erw, kind, baby, dinner, breakfast):
     total = 0
     d1 = datetime.strptime(arrival, "%Y-%m-%d")
@@ -90,20 +95,28 @@ def calculate_price(arrival, departure, erw, kind, baby, dinner, breakfast):
 
     return round(total, 2)
 
+
 def is_room_available(room, arrival, departure):
     db = get_db()
+
+    # Zimmertypen und deren Gruppierungen (Doppelzimmer, Viererzimmer, etc.)
     room_type = room_groups.get(room, room)
-    candidates = [r for r, t in room_groups.items() if t == room_type]
-    placeholders = ','.join(['?'] * len(candidates))
-    query = f"""
-        SELECT COUNT(*) as count FROM bookings
-        WHERE room IN ({placeholders})
+
+    # Bestimme die maximale Anzahl an verfügbaren Zimmern für das Zimmer
+    max_count = rooms.get(room, 0)  # Hier wird die Anzahl der Zimmer aus der 'rooms'-Variable genommen
+
+    # Abruf der bereits gebuchten Zimmer innerhalb des angegebenen Zeitraums
+    query = """
+        SELECT COUNT(*) as count 
+        FROM bookings
+        WHERE room = ?
         AND NOT (departure <= ? OR arrival >= ?)
     """
-    args = candidates + [arrival, departure]
-    res = db.execute(query, args).fetchone()
-    max_count = 1 if room_type == "Doppelzimmer" else 2
-    return res['count'] < max_count
+
+    res = db.execute(query, (room, arrival, departure)).fetchone()
+
+    return res[
+        'count'] < max_count  # Überprüfe, ob die Anzahl der bereits gebuchten Zimmer weniger als die maximale Anzahl ist
 
 
 @app.route('/')
@@ -136,6 +149,7 @@ def index():
             lists['past'].append(enriched)
     return render_template('index.html', lists=lists)
 
+
 @app.route('/export')
 def export_excel():
     if not session.get('user_id'):
@@ -162,7 +176,9 @@ def export_excel():
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Buchungen')
     output.seek(0)
-    return send_file(output, as_attachment=True, download_name='buchungen.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    return send_file(output, as_attachment=True, download_name='buchungen.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -175,10 +191,12 @@ def login():
         return render_template('login.html', error='Login fehlgeschlagen')
     return render_template('login.html')
 
+
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
 
 @app.route('/delete/<id>', methods=['POST'])
 def delete_booking(id):
@@ -225,10 +243,12 @@ def new_booking():
             gname = data.get(f'guest_name_{i}')
             gbirth = data.get(f'guest_birth_{i}')
             if gname and gbirth:
-                db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)', (booking_id, gname, gbirth))
+                db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)',
+                           (booking_id, gname, gbirth))
         db.commit()
         return redirect(url_for('index'))
     return render_template('new_booking.html', rooms=rooms)
+
 
 @app.route('/edit/<id>', methods=['GET', 'POST'])
 def edit_booking(id):
@@ -268,11 +288,13 @@ def edit_booking(id):
     guests = db.execute('SELECT * FROM guests WHERE booking_id = ?', (id,)).fetchall()
     return render_template('edit_booking.html', booking=booking, guests=guests, rooms=rooms)
 
+
 @app.route('/calendar')
 def calendar():
     if not session.get('user_id'):
         return redirect(url_for('login'))
     return render_template('calendar.html')
+
 
 @app.route('/api/bookings')
 def api_bookings():
@@ -283,8 +305,8 @@ def api_bookings():
     bookings = cur.fetchall()
 
     room_class_map = {
-        "Doppelzimmer": "room-doppel",
-        "Viererzimmer 1": "room-vz1",
+        "Doppelzimmer": "room-doppel",  # Stelle sicher, dass diese Klasse im CSS definiert ist
+        "Viererzimmer 1": "room-vz1",  # Ändere auch, falls nötig, die Klassennamen im CSS
         "Viererzimmer 2": "room-vz2",
         "Sechserzimmer 1": "room-sz1",
         "Sechserzimmer 2": "room-sz2"
@@ -299,8 +321,11 @@ def api_bookings():
 
     events = []
     for b in bookings:
+        main_guest_name = b['name']
+        num_guests = b['guests']
+
         events.append({
-            'title': f"{b['room']} – {b['name']} ({b['guests']} P)",
+            'title': f"{main_guest_name} ({num_guests} P)",
             'start': b['arrival'],
             'end': b['departure'],
             'url': f"/edit/{b['id']}",
@@ -308,6 +333,7 @@ def api_bookings():
             'statusClass': status_classes.get(b['status'], 'option')
         })
     return jsonify(events)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

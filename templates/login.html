@@ -1,22 +1,28 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>Login</title>
-  <link rel="stylesheet" href="/static/w3.css">
-</head>
-<h1>Alphütte Rossboden Buchungs-Manager</h1>
-<body class="w3-container">
-  <div class="w3-card w3-padding w3-margin w3-white w3-round-large" style="max-width:400px;margin:auto;margin-top:100px;">
-    <h2 class="w3-center">Login</h2>
-    {% if error %}<div class="w3-red w3-padding">{{ error }}</div>{% endif %}
-    <form method="post">
-      <label>Benutzername</label>
-      <input class="w3-input w3-border w3-margin-bottom" type="text" name="username" required>
-      <label>Passwort</label>
-      <input class="w3-input w3-border w3-margin-bottom" type="password" name="password" required>
-      <button class="w3-button w3-blue w3-block">Einloggen</button>
-    </form>
-  </div>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+
+{% block head %}
+    <link rel="stylesheet" href="/static/w3.css">
+    <link rel="stylesheet" href="/static/styles.css">
+{% endblock %}
+
+{% block content %}
+    <div class="w3-container w3-center w3-padding-64">
+        <!-- Stelle sicher, dass der Header zentriert ist -->
+        <h2 class="w3-text-blue">Alphütte Rossboden Buchungs-Manager</h2>
+        <div class="w3-card-4 w3-padding w3-white w3-border w3-round-large" style="max-width: 400px; margin: auto;">
+            <form method="POST" class="w3-container">
+                <h3>Login</h3>
+
+                <label for="username">Benutzername</label>
+                <input class="w3-input w3-border w3-margin-bottom" type="text" id="username" name="username" required>
+
+                <label for="password">Passwort</label>
+                <input class="w3-input w3-border w3-margin-bottom" type="password" id="password" name="password"
+                       required>
+
+                <button type="submit" class="w3-button w3-blue w3-block w3-margin-top">Einloggen</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
