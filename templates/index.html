@@ -1,25 +1,27 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="utf-8">
-    <title>Buchungsübersicht</title>
+  <meta charset="UTF-8">
+  <title>Übersicht</title>
+  <link rel="stylesheet" href="/static/w3.css">
 </head>
 <body>
-    <h1>Buchungen</h1>
-    <form action="/search">
-        <input type="text" name="q" placeholder="Suche nach Name oder Buchungsnummer">
-        <button type="submit">Suchen</button>
-    </form>
-    <a href="/new">Neue Buchung</a>
-    <ul>
-        {% for b in bookings %}
-        <li>
-            <strong>{{ b.name }}</strong> ({{ b.room }}, {{ b.guests }} Pers.)<br>
-            {{ b.arrival }} bis {{ b.departure }}<br>
-            Frühstück: {{ b.breakfast }}, Abendessen: {{ b.dinner }}<br>
-            Buchungsnummer: {{ b.id }}
-        </li>
-        {% endfor %}
+  <div class="w3-bar w3-dark-grey">
+    <a href="/" class="w3-bar-item w3-button">Kalenderübersicht</a>
+    <a href="/new" class="w3-bar-item w3-button">Neue Reservation</a>
+    <a href="/logout" class="w3-bar-item w3-button w3-right">Logout</a>
+  </div>
+  <div class="w3-container">
+    <h2>Reservationen</h2>
+    <ul class="w3-ul w3-card-4">
+      {% for b in bookings %}
+      <li class="w3-padding">
+        <strong>{{ b['name'] }}</strong> – {{ b['room'] }}, {{ b['guests'] }} Pers.<br>
+        {{ b['arrival'] }} bis {{ b['departure'] }}<br>
+        Frühstück: {{ b['breakfast'] }}, Abendessen: {{ b['dinner'] }}
+      </li>
+      {% endfor %}
     </ul>
+  </div>
 </body>
 </html>

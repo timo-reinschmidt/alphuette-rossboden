@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <link rel="stylesheet" href="/static/w3.css">
+</head>
+<body class="w3-container">
+  <div class="w3-card w3-padding w3-margin w3-white w3-round-large" style="max-width:400px;margin:auto;margin-top:100px;">
+    <h2 class="w3-center">Login</h2>
+    {% if error %}<div class="w3-red w3-padding">{{ error }}</div>{% endif %}
+    <form method="post">
+      <label>Benutzername</label>
+      <input class="w3-input w3-border w3-margin-bottom" type="text" name="username" required>
+      <label>Passwort</label>
+      <input class="w3-input w3-border w3-margin-bottom" type="password" name="password" required>
+      <button class="w3-button w3-blue w3-block">Einloggen</button>
+    </form>
+  </div>
+</body>
+</html>
