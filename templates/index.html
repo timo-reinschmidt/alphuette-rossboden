@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>Buchungsübersicht</title>
+</head>
+<body>
+    <h1>Buchungen</h1>
+    <form action="/search">
+        <input type="text" name="q" placeholder="Suche nach Name oder Buchungsnummer">
+        <button type="submit">Suchen</button>
+    </form>
+    <a href="/new">Neue Buchung</a>
+    <ul>
+        {% for b in bookings %}
+        <li>
+            <strong>{{ b.name }}</strong> ({{ b.room }}, {{ b.guests }} Pers.)<br>
+            {{ b.arrival }} bis {{ b.departure }}<br>
+            Frühstück: {{ b.breakfast }}, Abendessen: {{ b.dinner }}<br>
+            Buchungsnummer: {{ b.id }}
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

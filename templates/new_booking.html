@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>Neue Buchung</title>
+</head>
+<body>
+    <h1>Neue Buchung</h1>
+    <form method="post">
+        Name: <input type="text" name="name" required><br>
+        Geburtsdatum: <input type="date" name="birthdate" required><br>
+        Zimmer:
+        <select name="room">
+            {% for room in rooms %}
+            <option value="{{ room }}">{{ room }} (max. {{ rooms[room] }})</option>
+            {% endfor %}
+        </select><br>
+        Personenanzahl: <input type="number" name="guests" min="1" required><br>
+        Anreise: <input type="date" name="arrival" required><br>
+        Abreise: <input type="date" name="departure" required><br>
+        Frühstück: <input type="checkbox" name="breakfast"><br>
+        Abendessen: <input type="checkbox" name="dinner"><br>
+        <button type="submit">Speichern</button>
+    </form>
+</body>
+</html>
