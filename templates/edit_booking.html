@@ -130,6 +130,26 @@
         <button class="w3-button w3-red w3-margin-top">Buchung löschen</button>
     </form>
 
+    <h3>Status-Änderungen</h3>
+    <table class="w3-table w3-striped">
+        <thead>
+        <tr>
+            <th>Datum</th>
+            <th>Alter Status</th>
+            <th>Geändert von</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for entry in history %}
+            <tr>
+                <td>{{ entry.changed_at }}</td>
+                <td>{{ entry.status }}</td>
+                <td>{{ entry.changed_by }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
     <script src="/static/main.js"></script>
     <script src="/static/dinnerOptions.js" defer></script>
 

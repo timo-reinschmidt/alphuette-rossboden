@@ -118,6 +118,19 @@ def is_room_available(room, arrival, departure):
         'count'] < max_count  # Überprüfe, ob die Anzahl der bereits gebuchten Zimmer weniger als die maximale Anzahl ist
 
 
+def get_booking_history(booking_id):
+    db = get_db()
+    query = """
+        SELECT bh.*, u.username as changed_by
+        FROM booking_history bh
+        JOIN users u ON bh.changed_by = u.id
+        WHERE bh.booking_id = ?
+        ORDER BY bh.changed_at DESC
+    """
+    history = db.execute(query, (booking_id,)).fetchall()
+    return history
+
+
 @app.route('/')
 def index():
     if not session.get('user_id'):
@@ -311,6 +324,12 @@ def new_booking():
 @app.route('/edit/<id>', methods=['GET', 'POST'])
 def edit_booking(id):
     db = get_db()
+
+    # Holen der Buchungsdaten und der Historie
+    booking = db.execute('SELECT * FROM bookings WHERE id = ?', (id,)).fetchone()
+    guests = db.execute('SELECT * FROM guests WHERE booking_id = ?', (id,)).fetchall()
+    history = get_booking_history(id)  # Holen der Historie
+
     if request.method == 'POST':
         data = request.form
 
@@ -334,6 +353,15 @@ def edit_booking(id):
 
         hp_fleisch = safe_int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
         hp_vegi = safe_int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
+
+        # Statusänderung prüfen
+        new_status = data.get('status')
+        if new_status != booking['status']:  # Wenn der Status geändert wurde
+            # Füge den Statuswechsel zur Historie hinzu
+            db.execute('''
+                        INSERT INTO booking_history (booking_id, status, changed_at, changed_by)
+                        VALUES (?, ?, ?, ?)
+                    ''', (id, new_status, datetime.now(), session.get('user_id')))
 
         db.execute('''
             UPDATE bookings SET
@@ -372,11 +400,12 @@ def edit_booking(id):
                            (id, guest_name, guest_birth))
 
         db.commit()
+
         return redirect(url_for('index'))
 
     booking = db.execute('SELECT * FROM bookings WHERE id = ?', (id,)).fetchone()
     guests = db.execute('SELECT * FROM guests WHERE booking_id = ?', (id,)).fetchall()
-    return render_template('edit_booking.html', booking=booking, guests=guests, rooms=rooms)
+    return render_template('edit_booking.html', booking=booking, guests=guests, history=history, rooms=rooms)
 
 
 @app.route('/calendar')

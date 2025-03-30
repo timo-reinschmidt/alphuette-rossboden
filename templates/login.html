@@ -7,22 +7,31 @@
 {% endblock %}
 
 {% block content %}
-    <div class="w3-container w3-center w3-padding-64">
-        <!-- Stelle sicher, dass der Header zentriert ist -->
-        <h2 class="w3-text-blue">Alphütte Rossboden Buchungs-Manager</h2>
-        <div class="w3-card-4 w3-padding w3-white w3-border w3-round-large" style="max-width: 400px; margin: auto;">
-            <form method="POST" class="w3-container">
-                <h3>Login</h3>
+    <div class="w3-container" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+        <!-- Logo Section on the Left -->
+        <div style="flex: 1; text-align: center; padding-right: 20px;">
+            <img src="{{ url_for('static', filename='images/engstlenalp.png') }}" alt="Rossboden Logo" class="logo-img"
+                 style="max-width: 250px;">
+        </div>
 
-                <label for="username">Benutzername</label>
-                <input class="w3-input w3-border w3-margin-bottom" type="text" id="username" name="username" required>
+        <!-- Login Form Section -->
+        <div style="flex: 2; text-align: center;">
+            <h2 class="w3-text-blue">Alphütte Rossboden Buchungs-Manager</h2>
+            <div class="w3-card-4 w3-padding w3-white w3-border w3-round-large" style="max-width: 400px; margin: auto;">
+                <form method="POST" class="w3-container">
+                    <h3>Login</h3>
 
-                <label for="password">Passwort</label>
-                <input class="w3-input w3-border w3-margin-bottom" type="password" id="password" name="password"
-                       required>
+                    <label for="username">Benutzername</label>
+                    <input class="w3-input w3-border w3-margin-bottom" type="text" id="username" name="username"
+                           required>
 
-                <button type="submit" class="w3-button w3-blue w3-block w3-margin-top">Einloggen</button>
-            </form>
+                    <label for="password">Passwort</label>
+                    <input class="w3-input w3-border w3-margin-bottom" type="password" id="password" name="password"
+                           required>
+
+                    <button type="submit" class="w3-button w3-blue w3-block w3-margin-top">Einloggen</button>
+                </form>
+            </div>
         </div>
     </div>
 {% endblock %}
