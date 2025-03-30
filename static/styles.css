@@ -27,10 +27,11 @@
 }
 
 .status-legend {
+    margin: 20px auto;
+    max-width: 1000px;
     display: flex;
-    gap: 15px;
-    margin: 1rem 0;
-    font-size: 0.9rem;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 /* Status Dot für Kalender */
@@ -161,4 +162,16 @@ button.w3-red:hover {
 
 .room-sz2 {
     background-color: #FFA07A; /* Lachs für Sechserzimmer 2 */
+}
+
+@media (max-width: 768px) {
+    .w3-container {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .logo-img {
+        max-width: 200px; /* Adjust the logo size for smaller screens */
+    }
 }

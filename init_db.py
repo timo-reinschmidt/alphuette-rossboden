@@ -38,9 +38,18 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 """)
 
-cursor.execute("PRAGMA table_info(bookings);")
-columns = cursor.fetchall()
-print(columns)
+# Erstelle die Tabelle für Buchungshistorie (falls noch nicht vorhanden)
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS booking_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    booking_id INTEGER,
+    status TEXT,
+    changed_at TEXT,
+    changed_by INTEGER,
+    FOREIGN KEY(booking_id) REFERENCES bookings(id),
+    FOREIGN KEY(changed_by) REFERENCES users(id)
+);
+""")
 
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS guests (
