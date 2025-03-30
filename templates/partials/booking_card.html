@@ -1,7 +1,7 @@
 <div class="booking-card w3-card w3-padding w3-margin-bottom w3-white">
     <b>{{ booking.name }}</b> – {{ booking.room }}, {{ booking.guests }} Pers. ({{ booking.age_group }})<br>
     {{ booking.arrival }} bis {{ booking.departure }}<br>
-    Frühstück: {{ booking.breakfast }}, Abendessen: {{ booking.dinner }}<br>
+    HP: {{ booking.hp }} (Fleisch: {{ booking.hp_fleisch }}, Vegi: {{ booking.hp_vegi }})<br>
     E-Mail: {{ booking.email or '–' }}, Telefon: {{ booking.phone or '–' }}<br>
     <b>Status:</b> {{ booking.status or 'Option' }}<br>
     <b>Preis: CHF {{ booking.total_price }}</b><br>

@@ -72,7 +72,7 @@ def get_age_distribution(booking_id, main_birthdate):
     return ', '.join(result), (erw, kind, baby)
 
 
-def calculate_price(arrival, departure, erw, kind, baby, dinner, breakfast):
+def calculate_price(arrival, departure, erw, kind, baby, hp, hp_fleisch, hp_vegi):
     total = 0
     d1 = datetime.strptime(arrival, "%Y-%m-%d")
     d2 = datetime.strptime(departure, "%Y-%m-%d")
@@ -89,9 +89,9 @@ def calculate_price(arrival, departure, erw, kind, baby, dinner, breakfast):
     # Kurtaxe pro Aufenthalt
     total += erw * 4 + kind * 1.5
 
-    # Abendessen (optional)
-    if dinner in ['on', 'Ja']:
-        total += erw * 35 + (kind + baby) * 20
+    # Abendessen (jetzt HP: Halbpension) mit Fleisch und Vegi
+    if hp == 'Ja':
+        total += erw * 35 + (hp_fleisch) * 20 + (hp_vegi) * 20
 
     return round(total, 2)
 
@@ -135,7 +135,7 @@ def index():
     }
     for b in bookings:
         age_text, (erw, kind, baby) = get_age_distribution(b['id'], b['birthdate'])
-        price = calculate_price(b['arrival'], b['departure'], erw, kind, baby, b['dinner'], b['breakfast'])
+        price = calculate_price(b['arrival'], b['departure'], erw, kind, baby, b['hp'], b['hp_fleisch'], b['hp_vegi'])
         enriched = dict(b, age_group=age_text, total_price=price)
         arrival = datetime.strptime(b['arrival'], "%Y-%m-%d").date()
         departure = datetime.strptime(b['departure'], "%Y-%m-%d").date()
@@ -159,14 +159,13 @@ def export_excel():
     rows = []
     for b in bookings:
         age_text, (erw, kind, baby) = get_age_distribution(b['id'], b['birthdate'])
-        price = calculate_price(b['arrival'], b['departure'], erw, kind, baby, b['dinner'], b['breakfast'])
+        price = calculate_price(b['arrival'], b['departure'], erw, kind, baby, b['dinner'])
         rows.append({
             'Buchungsnummer': b['id'],
             'Name': b['name'],
             'Zimmer': b['room'],
             'Anreise': b['arrival'],
             'Abreise': b['departure'],
-            'Frühstück': b['breakfast'],
             'Abendessen': b['dinner'],
             'Altersverteilung': age_text,
             'Preis CHF': price
@@ -210,35 +209,38 @@ def delete_booking(id):
 
 @app.route('/new', methods=['GET', 'POST'])
 def new_booking():
-    if not session.get('user_id'):
-        return redirect(url_for('login'))
     if request.method == 'POST':
+        booking_id = str(uuid.uuid4())[:8]
         data = request.form
         room = data['room']
         guests = int(data['guests'])
-        if guests > rooms[room]:
-            return "Zimmer überbelegt", 400
+        hp = 'Ja' if 'hp' in data else 'Nein'
+        hp_fleisch = int(data.get('hp_fleisch', 0)) if hp == 'Ja' else None
+        hp_vegi = int(data.get('hp_vegi', 0)) if hp == 'Ja' else None
+
         db = get_db()
         booking_id = str(uuid.uuid4())[:8]
         db.execute('''
             INSERT INTO bookings
-            (id, name, birthdate, room, guests, arrival, departure, breakfast, dinner, email, phone, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, name, birthdate, room, guests, arrival, departure, hp, hp_fleisch, hp_vegi, email, phone, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            booking_id,
+            booking_id,  # Neue Buchungs-ID hier einfügen
             data['name'],
             data['birthdate'],
             room,
             guests,
             data['arrival'],
             data['departure'],
-            data.get('breakfast', 'Nein'),
-            data.get('dinner', 'Nein'),
+            hp,
+            hp_fleisch,
+            hp_vegi,
             data.get('email', ''),
             data.get('phone', ''),
             data.get('status', 'Option')
         ))
-        # Gäste erfassen (ab Person 2)
+
+        # Speichern der Gäste
         for i in range(1, guests):
             gname = data.get(f'guest_name_{i}')
             gbirth = data.get(f'guest_birth_{i}')
@@ -252,15 +254,17 @@ def new_booking():
 
 @app.route('/edit/<id>', methods=['GET', 'POST'])
 def edit_booking(id):
-    if not session.get('user_id'):
-        return redirect(url_for('login'))
     db = get_db()
     if request.method == 'POST':
         data = request.form
+        hp = 'Ja' if 'hp' in data else 'Nein'
+        hp_fleisch = int(data.get('hp_fleisch', 0) or 0) if hp == 'Ja' else None
+        hp_vegi = int(data.get('hp_vegi', 0) or 0) if hp == 'Ja' else None
+
         db.execute('''
             UPDATE bookings SET
             name=?, birthdate=?, email=?, phone=?, room=?, guests=?,
-            arrival=?, departure=?, breakfast=?, dinner=?, status=?
+            arrival=?, departure=?, hp=?, hp_fleisch=?, hp_vegi=?, status=?
             WHERE id=?
         ''', (
             data['name'],
@@ -271,8 +275,9 @@ def edit_booking(id):
             int(data['guests']),
             data['arrival'],
             data['departure'],
-            data.get('breakfast', 'Nein'),
-            data.get('dinner', 'Nein'),
+            hp,
+            hp_fleisch,
+            hp_vegi,
             data.get('status', 'Option'),
             id
         ))
@@ -284,6 +289,7 @@ def edit_booking(id):
                 db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)', (id, gname, gbirth))
         db.commit()
         return redirect(url_for('index'))
+
     booking = db.execute('SELECT * FROM bookings WHERE id = ?', (id,)).fetchone()
     guests = db.execute('SELECT * FROM guests WHERE booking_id = ?', (id,)).fetchall()
     return render_template('edit_booking.html', booking=booking, guests=guests, rooms=rooms)

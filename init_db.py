@@ -1,4 +1,5 @@
 import sqlite3
+
 from werkzeug.security import generate_password_hash
 
 # Verbindung zur Datenbank
@@ -14,32 +15,33 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS bookings (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    birthdate TEXT,
-    room TEXT,
-    guests INTEGER,
-    arrival TEXT,
-    departure TEXT,
-    breakfast TEXT,
-    dinner TEXT,
-    email TEXT,
-    phone TEXT,
-    status TEXT DEFAULT 'Option'
-)
-""")
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS bookings (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        birthdate TEXT,
+        room TEXT,
+        guests INTEGER,
+        arrival TEXT,
+        departure TEXT,
+        hp TEXT DEFAULT 'Nein',  -- Halbpension
+        hp_fleisch INTEGER DEFAULT 0,  -- Fleischanteil
+        hp_vegi INTEGER DEFAULT 0,  -- Vegi-Anteil
+        email TEXT,
+        phone TEXT,
+        status TEXT DEFAULT 'Option'
+    );
+''')
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS guests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    booking_id TEXT,
-    name TEXT,
-    birthdate TEXT,
-    FOREIGN KEY (booking_id) REFERENCES bookings(id)
-)
-""")
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS guests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        booking_id TEXT,
+        name TEXT,
+        birthdate TEXT,
+        FOREIGN KEY(booking_id) REFERENCES bookings(id)
+    );
+''')
 
 # Beispiel-Benutzer: admin / demo
 hashed_pw = generate_password_hash("demo")
