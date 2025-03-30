@@ -62,6 +62,64 @@ document.addEventListener("DOMContentLoaded", function () {
         guestInput.addEventListener("input", updateGuestFields);
         updateGuestFields(); // falls geladen mit >1 Gast
     }
+
+    const hpCheckbox = document.querySelector('input[name="hp"]');
+    const hpFleischField = document.querySelector('input[name="hp_fleisch"]');
+    const hpVegiField = document.querySelector('input[name="hp_vegi"]');
+
+    // Funktion zum Aktivieren/Deaktivieren der Fleisch- und Vegi-Felder
+    function toggleHPFields() {
+        if (hpCheckbox.checked) {
+            hpFleischField.disabled = false;  // Aktivieren der Felder
+            hpVegiField.disabled = false;    // Aktivieren der Felder
+        } else {
+            hpFleischField.disabled = true;   // Deaktivieren der Felder
+            hpVegiField.disabled = true;      // Deaktivieren der Felder
+        }
+    }
+
+    // Funktion zum Initialisieren der Felder (wird aufgerufen, wenn die Seite geladen wird)
+    function initializeFields() {
+        toggleHPFields();  // Setzt die Felder beim ersten Laden auf Basis des HP-Checkbox-Status
+    }
+
+    // Beim Laden der Seite prüfen, ob HP aktiviert ist
+    initializeFields();
+
+    // Füge EventListener hinzu, um sofortige Reaktion auf Änderung zu gewährleisten
+    hpCheckbox.addEventListener('change', toggleHPFields);  // Mit 'change', um sofortige Reaktion auf Änderungen zu garantieren.
+    hpFleischField.addEventListener('input', function () {
+        console.log("Fleischanteil geändert");
+    });
+    hpVegiField.addEventListener('input', function () {
+        console.log("Vegi-Anteil geändert");
+    });
+
+    // Add event listener to dynamically calculate the price preview
+    const pricePreview = document.getElementById("price-preview");
+
+    // Update price preview function (you can further enhance this logic)
+    function updatePricePreview() {
+        const hpChecked = hpCheckbox.checked;
+        const hpFleischValue = hpChecked ? parseInt(hpFleischField.value) || 0 : 0;
+        const hpVegiValue = hpChecked ? parseInt(hpVegiField.value) || 0 : 0;
+
+        let totalPrice = 0;
+
+        // Calculate the price based on number of guests, HP, Fleisch, Vegi (you may modify this logic)
+        totalPrice = 100 + (hpFleischValue * 20) + (hpVegiValue * 15); // Example price logic
+
+        // Update the price preview display
+        pricePreview.innerText = totalPrice.toFixed(2);  // Assuming totalPrice is calculated correctly
+    }
+
+    // Attach the function to change events of the input fields (HP, Fleisch, Vegi)
+    hpCheckbox.addEventListener('change', updatePricePreview);
+    hpFleischField.addEventListener('input', updatePricePreview);
+    hpVegiField.addEventListener('input', updatePricePreview);
+
+    // Initialize price preview on page load
+    updatePricePreview();
 });
 
 let debounceTimeout;
