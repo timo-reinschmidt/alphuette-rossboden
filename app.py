@@ -196,14 +196,32 @@ def logout():
     return redirect(url_for('login'))
 
 
-@app.route('/delete/<id>', methods=['POST'])
-def delete_booking(id):
+@app.route('/cancel_booking/<id>', methods=['POST'])
+def cancel_booking(id):
     if not session.get('user_id'):
         return redirect(url_for('login'))
     db = get_db()
     db.execute("UPDATE bookings SET status = 'Storniert' WHERE id = ?", (id,))
     db.commit()
     return redirect(url_for('index'))
+
+
+@app.route('/delete_booking/<id>', methods=['POST'])
+def delete_booking(id):
+    db = get_db()
+
+    # Zuerst die Gäste der Buchung löschen
+    db.execute('DELETE FROM guests WHERE booking_id = ?', (id,))
+
+    # Dann die Buchung aus der Buchungstabelle löschen
+    db.execute('DELETE FROM bookings WHERE id = ?', (id,))
+
+    # Änderungen in der Datenbank speichern
+    db.commit()
+
+    # Hier könnte man optional die Verfügbarkeit im Kalender oder anderen Systemen aktualisieren
+
+    return redirect(url_for('index'))  # Zurück zur Buchungsübersicht oder zur gewünschten Seite
 
 
 @app.route('/new', methods=['GET', 'POST'])
@@ -296,6 +314,15 @@ def edit_booking(id):
     if request.method == 'POST':
         data = request.form
 
+        # Wenn der Status auf "Storniert" gesetzt wird, die Buchung als storniert kennzeichnen
+        if data.get('status') == 'Storniert':
+            # Hier kannst du zusätzlich sicherstellen, dass die Zimmerverfügbarkeit freigegeben wird.
+            # Dazu könnte man die Buchung und alle Gäste auf "Storniert" setzen oder aus der DB löschen.
+
+            # Setze den Status auf "Storniert"
+            db.execute('UPDATE bookings SET status = "Storniert" WHERE id = ?', (id,))
+            db.commit()
+
         # Update der Buchung
         hp = 'Ja' if 'hp' in data else 'Nein'
 
@@ -365,7 +392,7 @@ def api_bookings():
         return jsonify([])
 
     db = get_db()
-    cur = db.execute('SELECT * FROM bookings')
+    cur = db.execute('SELECT * FROM bookings WHERE status != "Storniert"')
     bookings = cur.fetchall()
 
     room_class_map = {

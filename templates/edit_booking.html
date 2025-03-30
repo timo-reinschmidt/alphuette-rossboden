@@ -120,8 +120,14 @@
         </div>
     </form>
 
-    <form method="post" action="/delete/{{ booking.id }}" onsubmit="return confirm('Buchung wirklich stornieren?');">
+    <form method="post" action="/cancel_booking/{{ booking.id }}"
+          onsubmit="return confirm('Buchung wirklich stornieren?');">
         <button class="w3-button w3-red w3-margin-top">Buchung stornieren</button>
+    </form>
+
+    <form method="post" action="/delete_booking/{{ booking.id }}"
+          onsubmit="return confirm('Buchung wirklich löschen?');">
+        <button class="w3-button w3-red w3-margin-top">Buchung löschen</button>
     </form>
 
     <script src="/static/main.js"></script>
