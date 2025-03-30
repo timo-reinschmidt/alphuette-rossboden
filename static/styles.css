@@ -6,31 +6,6 @@
     border-radius: 8px;
 }
 
-.room-doppel {
-    background-color: #2196F3 !important;
-    color: white;
-}
-
-.room-vz1 {
-    background-color: #4CAF50 !important;
-    color: white;
-}
-
-.room-vz2 {
-    background-color: #FF9800 !important;
-    color: white;
-}
-
-.room-sz1 {
-    background-color: #9C27B0 !important;
-    color: white;
-}
-
-.room-sz2 {
-    background-color: #f44336 !important;
-    color: white;
-}
-
 .room-legend {
     margin: 20px auto;
     max-width: 1000px;
@@ -58,28 +33,35 @@
     font-size: 0.9rem;
 }
 
+/* Status Dot für Kalender */
 .status-dot {
-    display: inline-block;
     width: 10px;
     height: 10px;
-    border-radius: 50%;
+    border-radius: 50%; /* Rund um den Kreis zu erhalten */
+    display: inline-block;
     margin-right: 5px;
 }
 
+/* Farben für den Status */
 .status-option {
-    background-color: #fbc02d;
+    background-color: #fbc02d; /* Gelb für "Option" */
 }
 
 .status-confirmed {
-    background-color: #2196f3;
+    background-color: #2196f3; /* Blau für "Bestätigt" */
 }
 
 .status-checkedin {
-    background-color: #4caf50;
+    background-color: #4caf50; /* Grün für "Checked In" */
 }
 
 .status-cancelled {
-    background-color: #f44336;
+    background-color: #f44336; /* Rot für "Storniert" */
+}
+
+/* Textfarbe für Events im Kalender */
+.fc-event {
+    color: black !important; /* Setzt die Textfarbe auf Schwarz */
 }
 
 /* Custom styles for Navbar */
@@ -139,4 +121,44 @@
 
 .booking-result a:hover {
     text-decoration: underline;
+}
+
+/* CSS für Buttons */
+button {
+    transition: background-color 0.3s ease, transform 0.3s ease; /* Sanfter Übergang */
+}
+
+button:hover {
+    background-color: #0066cc; /* Farbe, die beim Hover angezeigt wird */
+    transform: scale(1.05); /* Leichter Zoom-Effekt */
+}
+
+/* Für Buttons mit speziellen Klassen */
+button.w3-blue:hover {
+    background-color: #005bb5; /* Dunkleres Blau */
+}
+
+button.w3-red:hover {
+    background-color: #cc0000; /* Dunkleres Rot */
+}
+
+/* Farben für Zimmer */
+.room-doppel {
+    background-color: #90EE90; /* Grün für Doppelzimmer */
+}
+
+.room-vz1 {
+    background-color: #ADD8E6; /* Hellblau für Viererzimmer 1 */
+}
+
+.room-vz2 {
+    background-color: #FFB6C1; /* Hellrosa für Viererzimmer 2 */
+}
+
+.room-sz1 {
+    background-color: #D8BFD8; /* Thistle für Sechserzimmer 1 */
+}
+
+.room-sz2 {
+    background-color: #FFA07A; /* Lachs für Sechserzimmer 2 */
 }

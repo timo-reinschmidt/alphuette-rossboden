@@ -18,6 +18,20 @@
         <label>Telefon</label>
         <input class="w3-input w3-margin-bottom" type="text" name="phone">
 
+        <!-- Adressfelder -->
+        <label>Adresse</label>
+        <input class="w3-input w3-margin-bottom" type="text" name="address" required>
+
+        <label>PLZ</label>
+        <input class="w3-input w3-margin-bottom" type="text" name="postal_code" required>
+
+        <label>Stadt</label>
+        <input class="w3-input w3-margin-bottom" type="text" name="city" required>
+
+        <label>Land</label>
+        <input class="w3-input w3-margin-bottom" type="text" name="country" required>
+
+        <br>
         <label>Zimmer</label>
         <select class="w3-select w3-margin-bottom" name="room" required>
             {% for room in rooms %}
@@ -47,6 +61,10 @@
         <label>Vegi-Anteil</label>
         <input class="w3-input w3-margin-bottom" type="number" name="hp_vegi" value="0" min="0">
 
+        <!-- Notizfeld -->
+        <label>Notiz</label>
+        <textarea class="w3-input w3-margin-bottom" name="note"></textarea>
+
         <label>Status</label>
         <select class="w3-select w3-margin-bottom" name="status">
             <option value="Option">Option</option>
@@ -56,6 +74,8 @@
         <button class="w3-button w3-blue w3-margin-top" type="submit">Speichern</button>
     </form>
 
+    <!-- <script src="/static/countryDropdown.js"></script> -->
+    <script src="/static/main.js"></script>
     <script src="/static/dinnerOptions.js" defer></script>
 
 {% endblock %}

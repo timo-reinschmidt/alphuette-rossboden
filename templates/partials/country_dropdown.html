@@ -1,0 +1,44 @@
+<!-- country_dropdown.html -->
+<label>Land</label>
+<select class="w3-select w3-margin-bottom" name="country" id="country" onchange="toggleOtherCountryField()">
+    <option value="Switzerland" selected>Schweiz</option>
+    <option value="Albania">Albanien</option>
+    <option value="Belgium">Belgien</option>
+    <option value="Canada">Kanada</option>
+    <option value="Croatia">Kroatien</option>
+    <option value="Czech Republic">Tschechien</option>
+    <option value="England">England</option>
+    <option value="France">Frankreich</option>
+    <option value="Germany">Deutschland</option>
+    <option value="Hungary">Ungarn</option>
+    <option value="Ireland">Irland</option>
+    <option value="Italy">Italien</option>
+    <option value="Liechtenstein">Fürstentum Liechtenstein</option>
+    <option value="Netherlands">Niederlande</option>
+    <option value="Poland">Polen</option>
+    <option value="Portugal">Portugal</option>
+    <option value="Scotland">Schottland</option>
+    <option value="Slovakia">Slowakei</option>
+    <option value="Slovenia">Slowenien</option>
+    <option value="United Arab Emirates">Vereinigte Arabische Emirate</option>
+    <option value="United Kingdom">Vereinigtes Königreich</option>
+    <option value="USA">USA</option>
+    <option value="Other">Anderes</option>
+</select>
+
+<!-- Eingabefeld für "Anderes" Land (wird nur angezeigt, wenn "Anderes" ausgewählt wurde) -->
+<div id="other-country-field" style="display:none;">
+    <label>Bitte geben Sie das Land ein:</label>
+    <input class="w3-input w3-margin-bottom" type="text" name="other_country">
+</div>
+
+<script>
+    function toggleOtherCountry() {
+        var country = document.querySelector('select[name="country"]').value;
+        if (country === 'Other') {
+            document.getElementById('other-country-container').style.display = 'block';
+        } else {
+            document.getElementById('other-country-container').style.display = 'none';
+        }
+    }
+</script>

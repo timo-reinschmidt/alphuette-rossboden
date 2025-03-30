@@ -81,3 +81,20 @@ body {
 .w3-round-large {
     border-radius: 8px
 }
+
+/* Flexbox Layout für Formular */
+.w3-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+/* Linke und rechte Spalten */
+.w3-half {
+    flex: 1 1 48%; /* Jede Spalte nimmt 48% des Platzes ein */
+}
+
+/* Sicherstellen, dass Felder in den Spalten gut aussehen */
+.w3-input {
+    width: 100%;
+}

@@ -1,6 +1,5 @@
 import io
 import sqlite3
-import uuid
 from datetime import datetime, date, timedelta
 
 import pandas as pd
@@ -211,49 +210,83 @@ def delete_booking(id):
 def new_booking():
     if not session.get('user_id'):
         return redirect(url_for('login'))
+
     if request.method == 'POST':
         data = request.form
-        room = data['room']
-        guests = int(data['guests'])
-        if guests > rooms[room]:
-            return "Zimmer überbelegt", 400
+
+        # Verbinde mit der Datenbank
         db = get_db()
-        booking_id = str(uuid.uuid4())[:8]  # Uniques Booking ID
-        hp = 'Ja' if 'hp' in data else 'Nein'
-        hp_fleisch = int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
-        hp_vegi = int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
 
-        # Buchung speichern
-        db.execute('''
-            INSERT INTO bookings
-            (id, name, birthdate, room, guests, arrival, departure, hp, hp_fleisch, hp_vegi, email, phone, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            booking_id,
-            data['name'],
-            data['birthdate'],
-            room,
-            guests,
-            data['arrival'],
-            data['departure'],
-            hp,
-            hp_fleisch,
-            hp_vegi,
-            data.get('email', ''),
-            data.get('phone', ''),
-            data.get('status', 'Option')
-        ))
+        try:
+            # Formulardaten ausgeben (Debugging)
+            print("Formulardaten:", data)
 
-        # Gäste erfassen (ab Person 2)
-        for i in range(1, guests):  # Wenn mehr als 1 Gast, füge Gäste hinzu
-            gname = data.get(f'guest_name_{i}')
-            gbirth = data.get(f'guest_birth_{i}')
-            if gname and gbirth:
-                db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)',
-                           (booking_id, gname, gbirth))
+            # Buchungsdaten vorbereiten
+            room = data['room']
+            guests = int(data['guests'])
 
-        db.commit()  # Änderungen speichern
-        return redirect(url_for('index'))
+            # Prüfe, ob das Zimmer verfügbar ist
+            if guests > rooms[room]:
+                return "Zimmer überbelegt", 400
+
+            # Erstelle eine eindeutige Buchungs-ID (UUID)
+            hp = 'Ja' if 'hp' in data else 'Nein'
+            hp_fleisch = int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
+            hp_vegi = int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
+
+            # Führe die INSERT INTO-Abfrage aus
+            db.execute('''
+                INSERT INTO bookings
+                (name, birthdate, room, guests, arrival, departure, hp, hp_fleisch, hp_vegi, email, phone, status, address, postal_code, city, country, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                data['name'],
+                data['birthdate'],
+                room,
+                guests,
+                data['arrival'],
+                data['departure'],
+                hp,
+                hp_fleisch,
+                hp_vegi,
+                data.get('email', ''),
+                data.get('phone', ''),
+                data.get('status', 'Option'),
+                data['address'],
+                data['postal_code'],
+                data['city'],
+                data['country'],
+                data.get('note', '')
+            ))
+
+            # Speichere die Änderungen in der DB
+            db.commit()
+
+            # Holen der Buchungs-ID durch SELECT
+            booking_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
+            print(f"Booking ID: {booking_id}")
+
+            # Gäste erfassen (ab Person 2)
+            for i in range(1, guests):  # Wenn mehr als 1 Gast, füge Gäste hinzu
+                guest_name = data.get(f'guest_name_{i}')
+                guest_birth = data.get(f'guest_birth_{i}')
+                if guest_name and guest_birth:
+                    db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)',
+                               (booking_id, guest_name, guest_birth))
+
+            # Bestätige die Änderungen in der DB
+            db.commit()
+
+            print("Buchung erfolgreich hinzugefügt")
+
+            return redirect(url_for('index'))
+
+        except sqlite3.Error as e:
+            # Fehlerbehandlung und Rollback, falls ein Fehler auftritt
+            print(f"Fehler bei der DB-Operation: {e}")
+            db.rollback()  # Rollback bei Fehlern
+            return "Fehler beim Hinzufügen der Buchung", 500
+
     return render_template('new_booking.html', rooms=rooms)
 
 
@@ -262,14 +295,24 @@ def edit_booking(id):
     db = get_db()
     if request.method == 'POST':
         data = request.form
+
+        # Update der Buchung
         hp = 'Ja' if 'hp' in data else 'Nein'
-        hp_fleisch = int(data.get('hp_fleisch', 0) or 0) if hp == 'Ja' else None
-        hp_vegi = int(data.get('hp_vegi', 0) or 0) if hp == 'Ja' else None
+
+        def safe_int(value):
+            try:
+                return int(value)
+            except ValueError:
+                return 0
+
+        hp_fleisch = safe_int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
+        hp_vegi = safe_int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
 
         db.execute('''
             UPDATE bookings SET
             name=?, birthdate=?, email=?, phone=?, room=?, guests=?,
-            arrival=?, departure=?, hp=?, hp_fleisch=?, hp_vegi=?, status=?
+            arrival=?, departure=?, hp=?, hp_fleisch=?, hp_vegi=?, status=?,
+            address=?, postal_code=?, city=?, country=?, notes=?
             WHERE id=?
         ''', (
             data['name'],
@@ -284,14 +327,23 @@ def edit_booking(id):
             hp_fleisch,
             hp_vegi,
             data.get('status', 'Option'),
+            data['address'],
+            data['postal_code'],
+            data['city'],
+            data['country'],
+            data['note'],
             id
         ))
+
+        # Lösche die bestehenden Gäste und füge die neuen hinzu
         db.execute('DELETE FROM guests WHERE booking_id = ?', (id,))
-        for i in range(1, int(data['guests'])):
-            gname = data.get(f'guest_name_{i}')
-            gbirth = data.get(f'guest_birth_{i}')
-            if gname and gbirth:
-                db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)', (id, gname, gbirth))
+        for i in range(1, int(data['guests']) + 1):  # Gastanzahl entsprechend der Anzahl erhöhen
+            guest_name = data.get(f'guest_name_{i}')
+            guest_birth = data.get(f'guest_birth_{i}')
+            if guest_name and guest_birth:
+                db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)',
+                           (id, guest_name, guest_birth))
+
         db.commit()
         return redirect(url_for('index'))
 
@@ -311,38 +363,44 @@ def calendar():
 def api_bookings():
     if not session.get('user_id'):
         return jsonify([])
+
     db = get_db()
     cur = db.execute('SELECT * FROM bookings')
     bookings = cur.fetchall()
 
     room_class_map = {
-        "Doppelzimmer": "room-doppel",  # Stelle sicher, dass diese Klasse im CSS definiert ist
-        "Viererzimmer 1": "room-vz1",  # Ändere auch, falls nötig, die Klassennamen im CSS
+        "Doppelzimmer": "room-doppel",
+        "Viererzimmer 1": "room-vz1",
         "Viererzimmer 2": "room-vz2",
         "Sechserzimmer 1": "room-sz1",
         "Sechserzimmer 2": "room-sz2"
     }
 
     status_classes = {
-        'Option': 'option',
-        'Bestätigt': 'confirmed',
-        'Checked In': 'checkedin',
-        'Storniert': 'cancelled'
+        'Option': 'option',  # Gelb
+        'Bestätigt': 'confirmed',  # Blau
+        'Checked In': 'checkedin',  # Grün
+        'Storniert': 'cancelled'  # Rot
     }
 
     events = []
     for b in bookings:
         main_guest_name = b['name']
         num_guests = b['guests']
+        room_class = room_class_map.get(b['room'], 'default-room')  # Zimmerfarbe zuweisen
+        status_class = status_classes.get(b['status'], 'option')  # Statusfarbe zuweisen
 
         events.append({
             'title': f"{main_guest_name} ({num_guests} P)",
             'start': b['arrival'],
             'end': b['departure'],
             'url': f"/edit/{b['id']}",
-            'className': room_class_map.get(b['room'], ''),
-            'statusClass': status_classes.get(b['status'], 'option')
+            'extendedProps': {
+                'statusClass': status_classes.get(b['status'], 'option')  # Status wird hier zugewiesen
+            },
+            'className': f"{room_class} {status_class}"  # Klasse für Zimmer und Status
         })
+
     return jsonify(events)
 
 

@@ -15,23 +15,32 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS bookings (
-        id TEXT PRIMARY KEY,
-        name TEXT,
-        birthdate TEXT,
-        room TEXT,
-        guests INTEGER,
-        arrival TEXT,
-        departure TEXT,
-        hp TEXT DEFAULT 'Nein',  -- Halbpension
-        hp_fleisch INTEGER DEFAULT 0,  -- Fleischanteil
-        hp_vegi INTEGER DEFAULT 0,  -- Vegi-Anteil
-        email TEXT,
-        phone TEXT,
-        status TEXT DEFAULT 'Option'
-    );
-''')
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS bookings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    birthdate TEXT,
+    room TEXT,
+    guests INTEGER,
+    arrival TEXT,
+    departure TEXT,
+    hp TEXT DEFAULT 'Nein',
+    hp_fleisch INTEGER DEFAULT 0,
+    hp_vegi INTEGER DEFAULT 0,
+    email TEXT,
+    phone TEXT,
+    status TEXT DEFAULT 'Option',
+    address TEXT,
+    postal_code TEXT,
+    city TEXT,
+    country TEXT,
+    notes TEXT
+);
+""")
+
+cursor.execute("PRAGMA table_info(bookings);")
+columns = cursor.fetchall()
+print(columns)
 
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS guests (

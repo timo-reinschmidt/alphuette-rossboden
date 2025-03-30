@@ -4,7 +4,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // Button zum Hinzufügen von Mitreisenden
     const addGuestButton = document.getElementById("add-guest");
     const guestDetailsContainer = document.getElementById("guest-details");
-    let guestCount = 0;
+
+    // Den Counter der Mitreisenden basierend auf der Anzahl der bestehenden Gäste initialisieren
+    let guestCount = document.querySelectorAll("#guest-details .guest-fieldset").length;
 
     // Sicherstellen, dass der Button vorhanden ist
     if (addGuestButton) {
@@ -14,9 +16,11 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
-    // Funktion, um neue Felder für Mitreisende hinzuzufügen
+    // Funktion, um ein neues Feld für einen Mitreisenden hinzuzufügen
     function addGuestFields() {
         guestCount++; // Erhöhe die Anzahl der Gäste
+
+        // Neues Feld für Mitreisenden erstellen
         const guestFieldSet = document.createElement("div");
         guestFieldSet.classList.add("guest-fieldset");
 
@@ -42,6 +46,7 @@ document.addEventListener("DOMContentLoaded", function () {
         removeButton.textContent = "Entfernen";
         removeButton.onclick = function () {
             guestDetailsContainer.removeChild(guestFieldSet);
+            guestCount--;  // Den Counter wieder verringern
         };
 
         guestFieldSet.appendChild(nameLabel);
@@ -84,44 +89,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Initialize price preview on page load
     updatePricePreview();
-});
-
-let debounceTimeout;
-
-function filterBookings() {
-    const input = document.getElementById("searchInput");
-    const filter = input.value.toUpperCase();
-    const bookingCards = document.querySelectorAll(".booking-card");
-    let found = false;
-
-    bookingCards.forEach(function (card) {
-        const textContent = card.textContent || card.innerText;
-
-        if (textContent.toUpperCase().indexOf(filter) > -1) {
-            card.style.display = "";
-            found = true;
-        } else {
-            card.style.display = "none";
-        }
-    });
-
-    if (!found) {
-        if (document.querySelector('.no-results-message') === null) {
-            const message = document.createElement('p');
-            message.classList.add('no-results-message');
-            message.textContent = 'Keine Buchungen gefunden.';
-            document.body.appendChild(message);
-        }
-    } else {
-        const message = document.querySelector('.no-results-message');
-        if (message) {
-            message.remove();
-        }
-    }
-}
-
-// Debouncing
-document.getElementById("searchInput").addEventListener("keyup", function () {
-    clearTimeout(debounceTimeout);
-    debounceTimeout = setTimeout(filterBookings, 300);  // 300ms warten, bevor die Filter-Funktion ausgeführt wird
 });
