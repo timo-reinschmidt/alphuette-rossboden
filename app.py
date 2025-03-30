@@ -209,23 +209,27 @@ def delete_booking(id):
 
 @app.route('/new', methods=['GET', 'POST'])
 def new_booking():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
     if request.method == 'POST':
-        booking_id = str(uuid.uuid4())[:8]
         data = request.form
         room = data['room']
         guests = int(data['guests'])
-        hp = 'Ja' if 'hp' in data else 'Nein'
-        hp_fleisch = int(data.get('hp_fleisch', 0)) if hp == 'Ja' else None
-        hp_vegi = int(data.get('hp_vegi', 0)) if hp == 'Ja' else None
-
+        if guests > rooms[room]:
+            return "Zimmer überbelegt", 400
         db = get_db()
-        booking_id = str(uuid.uuid4())[:8]
+        booking_id = str(uuid.uuid4())[:8]  # Uniques Booking ID
+        hp = 'Ja' if 'hp' in data else 'Nein'
+        hp_fleisch = int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
+        hp_vegi = int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
+
+        # Buchung speichern
         db.execute('''
             INSERT INTO bookings
             (id, name, birthdate, room, guests, arrival, departure, hp, hp_fleisch, hp_vegi, email, phone, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            booking_id,  # Neue Buchungs-ID hier einfügen
+            booking_id,
             data['name'],
             data['birthdate'],
             room,
@@ -240,14 +244,15 @@ def new_booking():
             data.get('status', 'Option')
         ))
 
-        # Speichern der Gäste
-        for i in range(1, guests):
+        # Gäste erfassen (ab Person 2)
+        for i in range(1, guests):  # Wenn mehr als 1 Gast, füge Gäste hinzu
             gname = data.get(f'guest_name_{i}')
             gbirth = data.get(f'guest_birth_{i}')
             if gname and gbirth:
                 db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)',
                            (booking_id, gname, gbirth))
-        db.commit()
+
+        db.commit()  # Änderungen speichern
         return redirect(url_for('index'))
     return render_template('new_booking.html', rooms=rooms)
 

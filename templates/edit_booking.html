@@ -26,6 +26,7 @@
             {% endfor %}
         </select>
 
+        <br>
         <label>Anzahl Gäste</label>
         <input class="w3-input w3-margin-bottom" type="number" name="guests" id="guests" value="{{ booking.guests }}"
                min="1" required>
@@ -36,9 +37,11 @@
         <label>Abreise</label>
         <input class="w3-input w3-margin-bottom" type="date" name="departure" value="{{ booking.departure }}" required>
 
+        <!-- HP (Halbpension) Optionen -->
         <label>HP (Halbpension)</label>
         <input class="w3-check" type="checkbox" name="hp" {% if booking.hp == 'Ja' %}checked{% endif %}>
 
+        <br>
         <label>Fleischanteil</label>
         <input class="w3-input w3-margin-bottom" type="number" name="hp_fleisch" value="{{ booking.hp_fleisch or '' }}"
                min="0" {% if booking.hp != 'Ja' %}disabled{% endif %}>
@@ -54,6 +57,7 @@
             {% endfor %}
         </select>
 
+        <!-- Gästeingabefelder -->
         <div id="guest-details">
             {% for guest in guests %}
                 <label>Name Mitreisender {{ loop.index }}</label>
@@ -64,16 +68,24 @@
             {% endfor %}
         </div>
 
+        <button type="button" id="add-guest" class="w3-button w3-blue w3-margin-top">+ Mitreisenden hinzufügen</button>
+
+        <br><br>
         <div class="w3-text-red w3-margin-top">
             <strong>Preisvorschau: CHF <span id="price-preview">0.00</span></strong>
         </div>
 
+        <br>
         <button class="w3-button w3-blue w3-margin-top" type="submit">Speichern</button>
     </form>
 
+    <br>
+    <!-- Löschen der Buchung -->
     <form method="post" action="/delete/{{ booking.id }}" onsubmit="return confirm('Buchung wirklich stornieren?');">
         <button class="w3-button w3-red w3-margin-top">Buchung stornieren</button>
     </form>
 
-    <script src="/static/main.js"></script>
+    <!-- JavaScript einbinden -->
+    <script src="/static/main.js"></script>  <!-- Mitreisenden hinzufügen Logik -->
+    <script src="/static/dinnerOptions.js" defer></script>  <!-- HP Logik -->
 {% endblock %}

@@ -1,98 +1,62 @@
 document.addEventListener("DOMContentLoaded", function () {
-    // Initialize the FullCalendar instance
-    const calendarEl = document.getElementById('calendar');
-    const calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',  // Startansicht
-        locale: 'de',  // Setze die Sprache auf Deutsch
-        height: 700,  // Setze die Höhe des Kalenders
-        events: '/api/bookings',  // Hole Events von diesem Endpunkt
-        eventContent: function (arg) {
-            console.log(arg.event);
-            // Zugriff auf zusätzliche Daten des Events über extendedProps
-            const eventTitle = arg.event.title; // Der Titel des Events (Name des Hauptbuchers)
-            const circle = document.createElement('span');
-            circle.className = 'status-dot status-' + arg.event.extendedProps.statusClass;
-            const text = document.createElement('span');
-            text.textContent = `${eventTitle}`;  // Nur Name und Gästezahl anzeigen
-            return {domNodes: [circle, text]};  // Gibt die DOM-Knoten zurück
-        }
-    });
+    console.log("JavaScript geladen");
 
-    // Render den Kalender
-    calendar.render();
+    // Button zum Hinzufügen von Mitreisenden
+    const addGuestButton = document.getElementById("add-guest");
+    const guestDetailsContainer = document.getElementById("guest-details");
+    let guestCount = 0;
 
-    const guestInput = document.getElementById("guests");
-    const container = document.getElementById("guest-details");
-
-    function updateGuestFields() {
-        const count = parseInt(guestInput.value);
-        const existing = container.querySelectorAll('input[name^="guest_name_"]').length;
-
-        // Falls mehr als 1 Gast gebucht ist
-        if (count > existing) {
-            for (let i = existing + 1; i <= count; i++) {
-                const nameLabel = document.createElement("label");
-                nameLabel.textContent = `Name Mitreisender ${i}`;
-                const nameInput = document.createElement("input");
-                nameInput.className = "w3-input w3-margin-bottom";
-                nameInput.name = `guest_name_${i}`;
-
-                const birthLabel = document.createElement("label");
-                birthLabel.textContent = `Geburtsdatum Mitreisender ${i}`;
-                const birthInput = document.createElement("input");
-                birthInput.type = "date";
-                birthInput.className = "w3-input w3-margin-bottom";
-                birthInput.name = `guest_birth_${i}`;
-
-                container.appendChild(nameLabel);
-                container.appendChild(nameInput);
-                container.appendChild(birthLabel);
-                container.appendChild(birthInput);
-            }
-        } else {
-            // Entferne Felder, falls Gästeanzahl reduziert wurde
-            for (let i = count; i < existing; i++) {
-                container.removeChild(container.lastChild); // Entferne das letzte Element
-                container.removeChild(container.lastChild); // Entferne das Geburtsdatum
-            }
-        }
+    // Sicherstellen, dass der Button vorhanden ist
+    if (addGuestButton) {
+        console.log("Button gefunden: + Mitreisenden hinzufügen");
+    } else {
+        console.error("Der Button zum Hinzufügen von Mitreisenden wurde nicht gefunden.");
+        return;
     }
 
-    if (guestInput && container) {
-        guestInput.addEventListener("input", updateGuestFields);
-        updateGuestFields(); // falls geladen mit >1 Gast
+    // Funktion, um neue Felder für Mitreisende hinzuzufügen
+    function addGuestFields() {
+        guestCount++; // Erhöhe die Anzahl der Gäste
+        const guestFieldSet = document.createElement("div");
+        guestFieldSet.classList.add("guest-fieldset");
+
+        // Mitreisender Name
+        const nameLabel = document.createElement("label");
+        nameLabel.textContent = `Name Mitreisender ${guestCount}`;
+        const nameInput = document.createElement("input");
+        nameInput.classList.add("w3-input", "w3-margin-bottom");
+        nameInput.name = `guest_name_${guestCount}`;
+
+        // Geburtsdatum des Mitreisenden
+        const birthLabel = document.createElement("label");
+        birthLabel.textContent = `Geburtsdatum Mitreisender ${guestCount}`;
+        const birthInput = document.createElement("input");
+        birthInput.classList.add("w3-input", "w3-margin-bottom");
+        birthInput.type = "date";
+        birthInput.name = `guest_birth_${guestCount}`;
+
+        // Entfernen-Button für das Gast-Feld
+        const removeButton = document.createElement("button");
+        removeButton.classList.add("w3-button", "w3-red", "w3-margin-top");
+        removeButton.type = "button";
+        removeButton.textContent = "Entfernen";
+        removeButton.onclick = function () {
+            guestDetailsContainer.removeChild(guestFieldSet);
+        };
+
+        guestFieldSet.appendChild(nameLabel);
+        guestFieldSet.appendChild(nameInput);
+        guestFieldSet.appendChild(birthLabel);
+        guestFieldSet.appendChild(birthInput);
+        guestFieldSet.appendChild(removeButton);
+
+        guestDetailsContainer.appendChild(guestFieldSet);
     }
 
-    const hpCheckbox = document.querySelector('input[name="hp"]');
-    const hpFleischField = document.querySelector('input[name="hp_fleisch"]');
-    const hpVegiField = document.querySelector('input[name="hp_vegi"]');
-
-    // Funktion zum Aktivieren/Deaktivieren der Fleisch- und Vegi-Felder
-    function toggleHPFields() {
-        if (hpCheckbox.checked) {
-            hpFleischField.disabled = false;  // Aktivieren der Felder
-            hpVegiField.disabled = false;    // Aktivieren der Felder
-        } else {
-            hpFleischField.disabled = true;   // Deaktivieren der Felder
-            hpVegiField.disabled = true;      // Deaktivieren der Felder
-        }
-    }
-
-    // Funktion zum Initialisieren der Felder (wird aufgerufen, wenn die Seite geladen wird)
-    function initializeFields() {
-        toggleHPFields();  // Setzt die Felder beim ersten Laden auf Basis des HP-Checkbox-Status
-    }
-
-    // Beim Laden der Seite prüfen, ob HP aktiviert ist
-    initializeFields();
-
-    // Füge EventListener hinzu, um sofortige Reaktion auf Änderung zu gewährleisten
-    hpCheckbox.addEventListener('change', toggleHPFields);  // Mit 'change', um sofortige Reaktion auf Änderungen zu garantieren.
-    hpFleischField.addEventListener('input', function () {
-        console.log("Fleischanteil geändert");
-    });
-    hpVegiField.addEventListener('input', function () {
-        console.log("Vegi-Anteil geändert");
+    // EventListener für den "+"-Button
+    addGuestButton.addEventListener("click", function () {
+        console.log("Button geklickt: Mitreisenden hinzufügen");
+        addGuestFields();
     });
 
     // Add event listener to dynamically calculate the price preview

@@ -24,12 +24,14 @@
                 <option value="{{ room }}">{{ room }}</option>
             {% endfor %}
         </select>
-
+        <br>
         <label>Anzahl Gäste</label>
         <input class="w3-input w3-margin-bottom" type="number" name="guests" min="1" id="guests" required>
 
+        <button type="button" id="add-guest" class="w3-button w3-blue w3-margin-top">+ Mitreisenden hinzufügen</button>
         <div id="guest-details"></div>
 
+        <br>
         <label>Anreise</label>
         <input class="w3-input w3-margin-bottom" type="date" name="arrival" required>
 
@@ -38,7 +40,7 @@
 
         <label>HP (Halbpension)</label>
         <input class="w3-check" type="checkbox" name="hp">
-
+        <br>
         <label>Fleischanteil</label>
         <input class="w3-input w3-margin-bottom" type="number" name="hp_fleisch" value="0" min="0">
 
@@ -54,6 +56,6 @@
         <button class="w3-button w3-blue w3-margin-top" type="submit">Speichern</button>
     </form>
 
-    <script src="/static/main.js"></script>
+    <script src="/static/dinnerOptions.js" defer></script>
 
 {% endblock %}
