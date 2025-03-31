@@ -4,6 +4,6 @@
     HP: {{ booking.hp }} (Fleisch: {{ booking.hp_fleisch }}, Vegi: {{ booking.hp_vegi }})<br>
     E-Mail: {{ booking.email or '–' }}, Telefon: {{ booking.phone or '–' }}<br>
     <b>Status:</b> {{ booking.status or 'Option' }}<br>
-    <b>Preis: CHF {{ booking.total_price }}</b><br>
+    <b>Preis: CHF {{ '%.2f' % booking.total_price }}</b><br>
     <a href="/edit/{{ booking.id }}" class="w3-button w3-blue w3-small w3-margin-top">Bearbeiten</a>
 </div>

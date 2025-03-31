@@ -1,31 +1,16 @@
 import io
 import sqlite3
+import uuid
 from datetime import datetime, date, timedelta
 
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify, send_file
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
 app.secret_key = 'rossboden_secret'
 
 DATABASE = 'database.db'
-
-rooms = {
-    "Doppelzimmer": 2,
-    "Viererzimmer 1": 4,
-    "Viererzimmer 2": 4,
-    "Sechserzimmer 1": 6,
-    "Sechserzimmer 2": 6
-}
-
-room_groups = {
-    "Doppelzimmer": "Doppelzimmer",
-    "4er-Zimmer 1": "Viererzimmer",
-    "4er-Zimmer 2": "Viererzimmer",
-    "6er-Zimmer 1": "Sechserzimmer",
-    "6er-Zimmer 2": "Sechserzimmer"
-}
 
 
 def get_db():
@@ -41,6 +26,25 @@ def close_connection(exception):
     db = getattr(g, '_database', None)
     if db is not None:
         db.close()
+
+
+@app.context_processor
+def inject_admin_status():
+    return dict(is_admin=session.get('is_admin', False))
+
+
+def get_rooms():
+    db = get_db()
+    rows = db.execute("SELECT * FROM rooms").fetchall()
+    return {row['name']: row['capacity'] for row in rows}
+
+
+def get_room_data():
+    db = get_db()
+    rooms = db.execute("SELECT * FROM rooms").fetchall()
+    room_dict = {room['name']: room['capacity'] for room in rooms}
+    group_map = {room['name']: room['type'] for room in rooms}
+    return room_dict, group_map
 
 
 def get_age_distribution(booking_id, main_birthdate):
@@ -97,14 +101,11 @@ def calculate_price(arrival, departure, erw, kind, baby, hp, hp_fleisch, hp_vegi
 
 def is_room_available(room, arrival, departure):
     db = get_db()
+    rooms, room_groups = get_room_data()
 
-    # Zimmertypen und deren Gruppierungen (Doppelzimmer, Viererzimmer, etc.)
     room_type = room_groups.get(room, room)
+    max_count = rooms.get(room, 0)
 
-    # Bestimme die maximale Anzahl an verfügbaren Zimmern für das Zimmer
-    max_count = rooms.get(room, 0)  # Hier wird die Anzahl der Zimmer aus der 'rooms'-Variable genommen
-
-    # Abruf der bereits gebuchten Zimmer innerhalb des angegebenen Zeitraums
     query = """
         SELECT COUNT(*) as count 
         FROM bookings
@@ -113,9 +114,7 @@ def is_room_available(room, arrival, departure):
     """
 
     res = db.execute(query, (room, arrival, departure)).fetchone()
-
-    return res[
-        'count'] < max_count  # Überprüfe, ob die Anzahl der bereits gebuchten Zimmer weniger als die maximale Anzahl ist
+    return res['count'] < max_count
 
 
 def get_booking_history(booking_id):
@@ -135,6 +134,8 @@ def get_booking_history(booking_id):
 def index():
     if not session.get('user_id'):
         return redirect(url_for('login'))
+
+    is_admin_value = session.get('is_admin', False)  # Standardwert False setzen
     db = get_db()
     cur = db.execute('SELECT * FROM bookings ORDER BY arrival')
     bookings = cur.fetchall()
@@ -159,7 +160,7 @@ def index():
             lists['upcoming'].append(enriched)
         else:
             lists['past'].append(enriched)
-    return render_template('index.html', lists=lists)
+    return render_template('index.html', lists=lists, is_admin=is_admin_value)
 
 
 @app.route('/export')
@@ -198,6 +199,7 @@ def login():
         user = db.execute('SELECT * FROM users WHERE username = ?', (request.form['username'],)).fetchone()
         if user and check_password_hash(user['password'], request.form['password']):
             session['user_id'] = user['id']
+            session['is_admin'] = user['is_admin']
             return redirect(url_for('index'))
         return render_template('login.html', error='Login fehlgeschlagen')
     return render_template('login.html')
@@ -242,35 +244,29 @@ def new_booking():
     if not session.get('user_id'):
         return redirect(url_for('login'))
 
+    rooms = get_rooms()
+
     if request.method == 'POST':
         data = request.form
-
-        # Verbinde mit der Datenbank
         db = get_db()
 
         try:
-            # Formulardaten ausgeben (Debugging)
-            print("Formulardaten:", data)
-
-            # Buchungsdaten vorbereiten
             room = data['room']
             guests = int(data['guests'])
-
-            # Prüfe, ob das Zimmer verfügbar ist
             if guests > rooms[room]:
                 return "Zimmer überbelegt", 400
 
-            # Erstelle eine eindeutige Buchungs-ID (UUID)
+            booking_id = str(uuid.uuid4())
             hp = 'Ja' if 'hp' in data else 'Nein'
             hp_fleisch = int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
             hp_vegi = int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
 
-            # Führe die INSERT INTO-Abfrage aus
             db.execute('''
                 INSERT INTO bookings
-                (name, birthdate, room, guests, arrival, departure, hp, hp_fleisch, hp_vegi, email, phone, status, address, postal_code, city, country, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, name, birthdate, room, guests, arrival, departure, hp, hp_fleisch, hp_vegi, email, phone, status, address, postal_code, city, country, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
+                booking_id,
                 data['name'],
                 data['birthdate'],
                 room,
@@ -290,32 +286,19 @@ def new_booking():
                 data.get('note', '')
             ))
 
-            # Speichere die Änderungen in der DB
-            db.commit()
-
-            # Holen der Buchungs-ID durch SELECT
-            booking_id = db.execute("SELECT last_insert_rowid()").fetchone()[0]
-            print(f"Booking ID: {booking_id}")
-
-            # Gäste erfassen (ab Person 2)
-            for i in range(1, guests):  # Wenn mehr als 1 Gast, füge Gäste hinzu
+            for i in range(1, guests):
                 guest_name = data.get(f'guest_name_{i}')
                 guest_birth = data.get(f'guest_birth_{i}')
                 if guest_name and guest_birth:
                     db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)',
                                (booking_id, guest_name, guest_birth))
 
-            # Bestätige die Änderungen in der DB
             db.commit()
-
-            print("Buchung erfolgreich hinzugefügt")
-
             return redirect(url_for('index'))
 
         except sqlite3.Error as e:
-            # Fehlerbehandlung und Rollback, falls ein Fehler auftritt
             print(f"Fehler bei der DB-Operation: {e}")
-            db.rollback()  # Rollback bei Fehlern
+            db.rollback()
             return "Fehler beim Hinzufügen der Buchung", 500
 
     return render_template('new_booking.html', rooms=rooms)
@@ -324,25 +307,19 @@ def new_booking():
 @app.route('/edit/<id>', methods=['GET', 'POST'])
 def edit_booking(id):
     db = get_db()
+    rooms = get_rooms()
 
-    # Holen der Buchungsdaten und der Historie
     booking = db.execute('SELECT * FROM bookings WHERE id = ?', (id,)).fetchone()
     guests = db.execute('SELECT * FROM guests WHERE booking_id = ?', (id,)).fetchall()
-    history = get_booking_history(id)  # Holen der Historie
+    history = get_booking_history(id)
 
     if request.method == 'POST':
         data = request.form
 
-        # Wenn der Status auf "Storniert" gesetzt wird, die Buchung als storniert kennzeichnen
         if data.get('status') == 'Storniert':
-            # Hier kannst du zusätzlich sicherstellen, dass die Zimmerverfügbarkeit freigegeben wird.
-            # Dazu könnte man die Buchung und alle Gäste auf "Storniert" setzen oder aus der DB löschen.
-
-            # Setze den Status auf "Storniert"
             db.execute('UPDATE bookings SET status = "Storniert" WHERE id = ?', (id,))
             db.commit()
 
-        # Update der Buchung
         hp = 'Ja' if 'hp' in data else 'Nein'
 
         def safe_int(value):
@@ -354,14 +331,12 @@ def edit_booking(id):
         hp_fleisch = safe_int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
         hp_vegi = safe_int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
 
-        # Statusänderung prüfen
         new_status = data.get('status')
-        if new_status != booking['status']:  # Wenn der Status geändert wurde
-            # Füge den Statuswechsel zur Historie hinzu
+        if new_status != booking['status']:
             db.execute('''
-                        INSERT INTO booking_history (booking_id, status, changed_at, changed_by)
-                        VALUES (?, ?, ?, ?)
-                    ''', (id, new_status, datetime.now(), session.get('user_id')))
+                INSERT INTO booking_history (booking_id, status, changed_at, changed_by)
+                VALUES (?, ?, ?, ?)
+            ''', (id, new_status, datetime.now(), session.get('user_id')))
 
         db.execute('''
             UPDATE bookings SET
@@ -390,9 +365,8 @@ def edit_booking(id):
             id
         ))
 
-        # Lösche die bestehenden Gäste und füge die neuen hinzu
         db.execute('DELETE FROM guests WHERE booking_id = ?', (id,))
-        for i in range(1, int(data['guests']) + 1):  # Gastanzahl entsprechend der Anzahl erhöhen
+        for i in range(1, int(data['guests']) + 1):
             guest_name = data.get(f'guest_name_{i}')
             guest_birth = data.get(f'guest_birth_{i}')
             if guest_name and guest_birth:
@@ -400,12 +374,120 @@ def edit_booking(id):
                            (id, guest_name, guest_birth))
 
         db.commit()
-
         return redirect(url_for('index'))
 
     booking = db.execute('SELECT * FROM bookings WHERE id = ?', (id,)).fetchone()
     guests = db.execute('SELECT * FROM guests WHERE booking_id = ?', (id,)).fetchall()
     return render_template('edit_booking.html', booking=booking, guests=guests, history=history, rooms=rooms)
+
+
+def is_admin(user_id):
+    db = get_db()
+    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    return user and user['is_admin'] == 1  # Überprüfe, ob der Benutzer Admin-Rechte hat
+
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    if not session.get('user_id') or not session.get('is_admin'):
+        return redirect(url_for('login'))  # Wenn nicht eingeloggt oder kein Admin
+
+    db = get_db()
+
+    # Preise aus der Datenbank holen
+    prices = db.execute("SELECT * FROM prices").fetchall()
+    users = db.execute("SELECT * FROM users").fetchall()
+    error = None
+
+    if request.method == 'POST':
+        # Benutzer hinzufügen
+        if 'add_user' in request.form:
+            username = request.form.get('username')
+            password = request.form.get('password')
+
+            # Debugging: Logge die erhaltenen Formulardaten
+            print(f"Benutzername: {username}, Passwort: {password}")
+
+            # Stelle sicher, dass der Benutzername nicht bereits existiert
+            existing_user = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+            if existing_user:
+                return render_template('admin.html', prices=prices, users=users, error="Benutzername existiert bereits")
+
+            # Passworteingabe überprüfen
+            if not username or not password:
+                return render_template('admin.html', prices=prices, users=users,
+                                       error="Benutzername und Passwort dürfen nicht leer sein")
+
+            # Debugging: Logge, bevor der Benutzer hinzugefügt wird
+            print(f"Füge Benutzer hinzu: {username}")
+
+            hashed_pw = generate_password_hash(password)
+            is_admin = 1 if 'is_admin' in request.form else 0  # Admin-Flag setzen
+
+            try:
+                # Füge den Benutzer zur Datenbank hinzu
+                db.execute("INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)",
+                           (username, hashed_pw, is_admin))
+                db.commit()  # Änderungen speichern
+                print("Benutzer hinzugefügt!")  # Debugging: Bestätigung
+            except Exception as e:
+                print(f"Fehler beim Hinzufügen des Benutzers: {e}")
+                return render_template('admin.html', prices=prices, users=users,
+                                       error="Fehler beim Hinzufügen des Benutzers")
+
+            return redirect(url_for('admin'))
+
+        # Benutzer entfernen
+        elif 'remove_user' in request.form:
+            user_id = request.form.get('user_id')
+            db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            db.commit()
+
+        # Preis anpassen
+        elif 'update_price' in request.form:
+            category = request.form.get('category')
+            weekend_price = float(request.form.get('weekend_price'))
+            weekday_price = float(request.form.get('weekday_price'))
+
+            db.execute("""
+                UPDATE prices 
+                SET weekend_price = ?, weekday_price = ? 
+                WHERE category = ?
+            """, (weekend_price, weekday_price, category))
+            db.commit()
+
+        return redirect(url_for('admin'))
+
+    return render_template('admin.html', prices=prices, users=users, error=error)
+
+
+@app.route('/update_booking_date/<booking_id>', methods=['POST'])
+def update_booking_date(booking_id):
+    db = get_db()
+    new_arrival = request.form['arrival']
+    new_departure = request.form['departure']
+
+    # Überprüfen, ob das Zimmer verfügbar ist
+    room = request.form['room']
+    if not is_room_available(room, new_arrival, new_departure):
+        return "Zimmer nicht verfügbar für das neue Datum", 400
+
+    # Berechne den neuen Preis basierend auf den neuen Daten
+    erw, kind, baby = get_age_distribution(booking_id)
+    price = calculate_price(new_arrival, new_departure, erw, kind, baby, 'Ja', 0, 0)  # Beispiel für Halbpension
+
+    # Aktualisieren des Buchungsdatums und Preises
+    db.execute('''
+        UPDATE bookings 
+        SET arrival = ?, departure = ?, total_price = ? 
+        WHERE id = ?
+    ''', (new_arrival, new_departure, price, booking_id))
+
+    # Änderungen in der Datenbank speichern
+    db.commit()
+
+    # Rückgabe der Bestätigung
+    return "Buchung erfolgreich aktualisiert"
 
 
 @app.route('/calendar')
@@ -458,6 +540,115 @@ def api_bookings():
         })
 
     return jsonify(events)
+
+
+@app.route('/reports', methods=['GET', 'POST'])
+def reports():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+
+    db = get_db()
+    error = None
+    reports = []
+    today = datetime.today().date()
+
+    if request.method == 'POST':
+        report_type = request.form.get('report_type')
+
+        if report_type == 'arrival':
+            # Anreisen im gewählten Zeitraum
+            start_date = request.form.get('start_date')
+            end_date = request.form.get('end_date')
+            query = """
+                SELECT b.name, b.guests, b.hp, b.hp_fleisch, b.hp_vegi, b.arrival, b.departure, g.name as guest_name, g.birthdate
+                FROM bookings b
+                LEFT JOIN guests g ON b.id = g.booking_id
+                WHERE b.arrival BETWEEN ? AND ?
+            """
+            rows = db.execute(query, (start_date, end_date)).fetchall()
+
+            # Berechnung des Alters der Gäste
+            report_data = []
+            today = date.today()
+            for row in rows:
+                guest_age = None
+                if row['birthdate']:
+                    guest_age = (today - datetime.strptime(row['birthdate'], "%Y-%m-%d").date()).days // 365
+                report_data.append({
+                    'name': row['name'],
+                    'guests': row['guests'],
+                    'hp': row['hp'],
+                    'hp_fleisch': row['hp_fleisch'],
+                    'hp_vegi': row['hp_vegi'],
+                    'guest_name': row['guest_name'],
+                    'guest_age': guest_age,
+                    'arrival': row['arrival'],
+                    'departure': row['departure']
+                })
+            reports.append(('Anreisen', report_data))
+
+        elif report_type == 'in_house':
+            # Im Haus Liste
+            query = """
+                SELECT b.name, b.guests, b.hp, b.hp_fleisch, b.hp_vegi, b.arrival, b.departure, r.type as room_type, g.name as guest_name, g.birthdate
+                FROM bookings b
+                LEFT JOIN guests g ON b.id = g.booking_id
+                LEFT JOIN rooms r ON b.room = r.name
+                WHERE b.status = 'Bestätigt' AND b.arrival <= ? AND b.departure >= ?
+            """
+            rows = db.execute(query, (today, today)).fetchall()
+
+            # Berechnung des Alters der Gäste
+            report_data = []
+            for row in rows:
+                guest_age = None  # Setze einen Standardwert
+                if row['birthdate']:
+                    guest_age = (today - datetime.strptime(row['birthdate'], "%Y-%m-%d").date()).days // 365
+                report_data.append({
+                    'name': row['name'],
+                    'guests': row['guests'],
+                    'hp': row['hp'],
+                    'hp_fleisch': row['hp_fleisch'],
+                    'hp_vegi': row['hp_vegi'],
+                    'room_type': row['room_type'],
+                    'guest_name': row['guest_name'],
+                    'guest_age': guest_age,
+                    'arrival': row['arrival'],
+                    'departure': row['departure']
+                })
+            reports.append(('Im Haus', report_data))
+
+        elif report_type == 'departure':
+            # Heutige Abreise Liste
+            query = """
+                SELECT b.name, b.guests, b.hp, b.hp_fleisch, b.hp_vegi, b.arrival, b.departure, g.name as guest_name, g.birthdate
+                FROM bookings b
+                LEFT JOIN guests g ON b.id = g.booking_id
+                WHERE b.departure = ?
+            """
+            rows = db.execute(query, (today,)).fetchall()
+
+            # Berechnung des Alters der Gäste und Gesamtpreis
+            report_data = []
+            for row in rows:
+                guest_age = None  # Setze einen Standardwert
+                if row['birthdate']:
+                    guest_age = (today - datetime.strptime(row['birthdate'], "%Y-%m-%d").date()).days // 365
+                price = calculate_price(row['arrival'], row['departure'], row['guests'], row['hp'],
+                                        row['hp_fleisch'], row['hp_vegi'])
+                report_data.append({
+                    'name': row['name'],
+                    'guests': row['guests'],
+                    'hp': row['hp'],
+                    'hp_fleisch': row['hp_fleisch'],
+                    'hp_vegi': row['hp_vegi'],
+                    'guest_name': row['guest_name'],
+                    'guest_age': guest_age,
+                    'total_price': price
+                })
+            reports.append(('Heutige Abreise', report_data))
+
+    return render_template('reports.html', reports=reports, error=error)
 
 
 if __name__ == '__main__':

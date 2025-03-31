@@ -6,72 +6,99 @@
 
     <form method="POST" class="w3-container w3-card-4 w3-light-grey w3-padding">
 
-        <label>Name</label>
-        <input class="w3-input w3-margin-bottom" type="text" name="name" required>
+        <!-- Formular im Flexbox-Layout mit Abstand zwischen den Spalten -->
+        <div class="w3-row">
+            <!-- Linke Spalte -->
+            <div class="w3-half w3-padding-right">
+                <label for="name">Name</label>
+                <input class="w3-input w3-margin-bottom" type="text" name="name" required>
 
-        <label>Geburtsdatum (Hauptgast)</label>
-        <input class="w3-input w3-margin-bottom" type="date" name="birthdate" required>
+                <label for="birthdate">Geburtsdatum (Hauptgast)</label>
+                <input class="w3-input w3-margin-bottom" type="date" name="birthdate" required>
 
-        <label>E-Mail</label>
-        <input class="w3-input w3-margin-bottom" type="email" name="email">
+                <label for="email">E-Mail</label>
+                <input class="w3-input w3-margin-bottom" type="email" name="email">
 
-        <label>Telefon</label>
-        <input class="w3-input w3-margin-bottom" type="text" name="phone">
+                <label for="phone">Telefon</label>
+                <input class="w3-input w3-margin-bottom" type="tel" name="phone">
 
-        <!-- Adressfelder -->
-        <label>Adresse</label>
-        <input class="w3-input w3-margin-bottom" type="text" name="address" required>
+                <!-- Adressfelder -->
+                <label for="address">Adresse</label>
+                <input class="w3-input w3-margin-bottom" type="text" name="address" required>
 
-        <label>PLZ</label>
-        <input class="w3-input w3-margin-bottom" type="text" name="postal_code" required>
+                <label for="postal_code">PLZ</label>
+                <input class="w3-input w3-margin-bottom" type="text" name="postal_code" required>
 
-        <label>Stadt</label>
-        <input class="w3-input w3-margin-bottom" type="text" name="city" required>
+                <label for="city">Stadt</label>
+                <input class="w3-input w3-margin-bottom" type="text" name="city" required>
 
-        <label>Land</label>
-        <input class="w3-input w3-margin-bottom" type="text" name="country" required>
+                <label for="country">Land</label>
+                <input class="w3-input w3-margin-bottom" type="text" name="country" required>
 
-        <br>
-        <label>Zimmer</label>
-        <select class="w3-select w3-margin-bottom" name="room" required>
-            {% for room in rooms %}
-                <option value="{{ room }}">{{ room }}</option>
-            {% endfor %}
-        </select>
-        <br>
-        <label>Anzahl Gäste</label>
-        <input class="w3-input w3-margin-bottom" type="number" name="guests" min="1" id="guests" required>
+                <label for="arrival">Anreise</label>
+                <input class="w3-input w3-margin-bottom" type="date" name="arrival" required>
 
-        <button type="button" id="add-guest" class="w3-button w3-blue w3-margin-top">+ Mitreisenden hinzufügen</button>
-        <div id="guest-details"></div>
+                <label for="departure">Abreise</label>
+                <input class="w3-input w3-margin-bottom" type="date" name="departure" required>
+            </div>
 
-        <br>
-        <label>Anreise</label>
-        <input class="w3-input w3-margin-bottom" type="date" name="arrival" required>
+            <!-- Rechte Spalte -->
+            <div class="w3-half w3-padding-left w3-margin-left">
 
-        <label>Abreise</label>
-        <input class="w3-input w3-margin-bottom" type="date" name="departure" required>
+                <label for="room">Zimmer</label>
+                <select class="w3-select w3-margin-bottom" name="room" required>
+                    <option value="Doppelzimmer">Doppelzimmer</option>
+                    <option value="Viererzimmer 1">Viererzimmer 1</option>
+                    <option value="Viererzimmer 2">Viererzimmer 2</option>
+                    <option value="Sechserzimmer 1">Sechserzimmer 1</option>
+                    <option value="Sechserzimmer 2">Sechserzimmer 2</option>
+                </select>
 
-        <label>HP (Halbpension)</label>
-        <input class="w3-check" type="checkbox" name="hp">
-        <br>
-        <label>Fleischanteil</label>
-        <input class="w3-input w3-margin-bottom" type="number" name="hp_fleisch" value="0" min="0">
+                <label for="guests">Anzahl Gäste</label>
+                <input class="w3-input w3-margin-bottom" type="number" name="guests" required min="1">
 
-        <label>Vegi-Anteil</label>
-        <input class="w3-input w3-margin-bottom" type="number" name="hp_vegi" value="0" min="0">
+                <!-- Dynamische Felder für Mitreisende -->
+                <div id="guest-details">
+                    <!-- Hier können dynamische Felder für Mitreisende hinzugefügt werden -->
+                </div>
 
-        <!-- Notizfeld -->
-        <label>Notiz</label>
-        <textarea class="w3-input w3-margin-bottom" name="note"></textarea>
+                <button type="button" id="add-guest" class="w3-button w3-blue w3-margin-top">+ Mitreisenden
+                    hinzufügen
+                </button>
 
-        <label>Status</label>
-        <select class="w3-select w3-margin-bottom" name="status">
-            <option value="Option">Option</option>
-            <option value="Bestätigt">Bestätigt</option>
-        </select>
+                <br><br>
 
-        <button class="w3-button w3-blue w3-margin-top" type="submit">Speichern</button>
+                <label for="hp">HP (Halbpension)</label>
+                <input class="w3-check" type="checkbox" name="hp">
+
+                <br>
+
+                <label for="hp_fleisch">Fleischanteil</label>
+                <input class="w3-input w3-margin-bottom" type="number" name="hp_fleisch" min="0">
+
+                <label for="hp_vegi">Vegi-Anteil</label>
+                <input class="w3-input w3-margin-bottom" type="number" name="hp_vegi" min="0">
+
+                <label for="status">Status</label>
+                <select class="w3-select w3-margin-bottom" name="status">
+                    <option value="Option">Option</option>
+                    <option value="Bestätigt">Bestätigt</option>
+                    <option value="Checked In">Checked In</option>
+                    <option value="Storniert">Storniert</option>
+                </select>
+
+                <br>
+
+                <label for="note">Notiz</label>
+                <textarea class="w3-input w3-margin-bottom" name="note"></textarea>
+
+                <div class="w3-text-red w3-margin-top">
+                    <strong>Preisvorschau: CHF <span id="price-preview">0.00</span></strong>
+                </div>
+
+                <button class="w3-button w3-blue w3-margin-top" type="submit">Speichern</button>
+            </div>
+        </div>
     </form>
 
     <!-- <script src="/static/countryDropdown.js"></script> -->
