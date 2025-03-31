@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Berichte{% endblock %}
+
+{% block content %}
+    <h2>Berichte</h2>
+
+    <form method="POST">
+        <label for="report_type">Berichtstyp wählen:</label>
+        <select name="report_type" id="report_type">
+            <option value="arrival">Anreisen</option>
+            <option value="in_house">Im Haus</option>
+            <option value="departure">Heutige Abreise</option>
+        </select>
+
+        <label for="start_date">Startdatum:</label>
+        <input type="date" name="start_date" required>
+
+        <label for="end_date">Enddatum:</label>
+        <input type="date" name="end_date" required>
+
+        <button type="submit">Bericht anzeigen</button>
+    </form>
+
+    {% if reports %}
+        {% for title, data in reports %}
+            <h3>{{ title }}</h3>
+            <table class="w3-table w3-bordered">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Anzahl Gäste</th>
+                    <th>HP</th>
+                    <th>Fleisch</th>
+                    <th>Vegi</th>
+                    <th>Gästenamen</th>
+                    <th>Gästealter</th>
+                    <th>Anreise</th>
+                    <th>Abreise</th>
+                    <th>Gesamtpreis</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in data %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.guests }}</td>
+                        <td>{{ row.hp }}</td>
+                        <td>{{ row.hp_fleisch }}</td>
+                        <td>{{ row.hp_vegi }}</td>
+                        <td>{{ row.guest_name }}</td>
+                        <td>{{ row.guest_age }}</td>
+                        <td>{{ row.arrival }}</td>
+                        <td>{{ row.departure }}</td>
+                        <td>{{ row.total_price if row.total_price else 'N/A' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    {% endif %}
+{% endblock %}
