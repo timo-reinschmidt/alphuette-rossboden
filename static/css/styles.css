@@ -36,6 +36,7 @@
 
 /* Status Dot für Kalender */
 .status-dot {
+    border: 1px solid black;
     width: 10px;
     height: 10px;
     border-radius: 50%; /* Rund um den Kreis zu erhalten */
@@ -58,6 +59,11 @@
 
 .status-cancelled {
     background-color: #f44336; /* Rot für "Storniert" */
+}
+
+.status-checkedout {
+    background-color: white; /* Gelbe Farbe für ausgecheckte Buchungen */
+    color: white;
 }
 
 /* Textfarbe für Events im Kalender */

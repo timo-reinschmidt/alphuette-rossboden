@@ -56,7 +56,9 @@ CREATE TABLE IF NOT EXISTS bookings (
     postal_code TEXT,
     city TEXT,
     country TEXT,
-    notes TEXT
+    notes TEXT,
+    payment_status BOOLEAN DEFAULT 0,
+    payment_method TEXT
 );
 """)
 

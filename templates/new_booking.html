@@ -47,11 +47,11 @@
 
                 <label for="room">Zimmer</label>
                 <select class="w3-select w3-margin-bottom" name="room" required>
-                    <option value="Doppelzimmer">Doppelzimmer</option>
-                    <option value="Viererzimmer 1">Viererzimmer 1</option>
-                    <option value="Viererzimmer 2">Viererzimmer 2</option>
-                    <option value="Sechserzimmer 1">Sechserzimmer 1</option>
-                    <option value="Sechserzimmer 2">Sechserzimmer 2</option>
+
+                    {% for room in rooms %}
+                        <option value="{{ room }}">{{ room }}</option>
+                    {% endfor %}
+
                 </select>
 
                 <label for="guests">Anzahl Gäste</label>
@@ -73,10 +73,10 @@
 
                 <br>
 
-                <label for="hp_fleisch">Fleischanteil</label>
+                <label for="hp_fleisch">Fleisch</label>
                 <input class="w3-input w3-margin-bottom" type="number" name="hp_fleisch" min="0">
 
-                <label for="hp_vegi">Vegi-Anteil</label>
+                <label for="hp_vegi">Vegi</label>
                 <input class="w3-input w3-margin-bottom" type="number" name="hp_vegi" min="0">
 
                 <label for="status">Status</label>
@@ -102,7 +102,7 @@
     </form>
 
     <!-- <script src="/static/countryDropdown.js"></script> -->
-    <script src="/static/main.js"></script>
-    <script src="/static/dinnerOptions.js" defer></script>
+    <script src="static/js/main.js"></script>
+    <script src="static/js/dinnerOptions.js" defer></script>
 
 {% endblock %}

@@ -92,20 +92,16 @@
                 <label>HP (Halbpension)</label>
                 <input class="w3-check" type="checkbox" name="hp" {% if booking.hp == 'Ja' %}checked{% endif %}>
 
-                <label>Fleischanteil</label>
+                <br><br>
+
+                <label>Fleisch</label>
                 <input class="w3-input w3-margin-bottom" type="number" name="hp_fleisch"
                        value="{{ booking.hp_fleisch or '' }}" min="0" {% if booking.hp != 'Ja' %}disabled{% endif %}>
 
-                <label>Vegi-Anteil</label>
+                <label>Vegi</label>
                 <input class="w3-input w3-margin-bottom" type="number" name="hp_vegi"
                        value="{{ booking.hp_vegi or '' }}" min="0" {% if booking.hp != 'Ja' %}disabled{% endif %}>
 
-                <label>Status</label>
-                <select class="w3-select w3-margin-bottom" name="status">
-                    {% for s in ['Option', 'Bestätigt', 'Checked In', 'Storniert'] %}
-                        <option value="{{ s }}" {% if booking.status == s %}selected{% endif %}>{{ s }}</option>
-                    {% endfor %}
-                </select>
 
                 <br>
                 <label>Notiz</label>
@@ -114,6 +110,43 @@
                 <div class="w3-text-red w3-margin-top">
                     <strong>Preisvorschau: CHF <span id="price-preview">0.00</span></strong>
                 </div>
+
+                <label>Bezahlt</label>
+                <input class="w3-check" type="checkbox" name="payment_status"
+                       {% if booking.payment_status %}checked{% endif %} onchange="togglePaymentMethod()">
+
+                <div id="payment-method-container"
+                     style="display: {% if booking.payment_status %}block{% else %}none{% endif %}">
+                    <label>Zahlungsmittel</label>
+                    <select class="w3-select" name="payment_method"
+                            {% if not booking.payment_status %}disabled{% endif %}>
+                        <option value="Bar" {% if booking.payment_method == 'Bar' %}selected{% endif %}>Bar</option>
+                        <option value="Amex" {% if booking.payment_method == 'Amex' %}selected{% endif %}>Amex</option>
+                        <option value="Visa" {% if booking.payment_method == 'Visa' %}selected{% endif %}>Visa</option>
+                        <option value="Mastercard" {% if booking.payment_method == 'Mastercard' %}selected{% endif %}>
+                            Mastercard
+                        </option>
+                        <option value="Reka" {% if booking.payment_method == 'Reka' %}selected{% endif %}>Reka</option>
+                        <option value="Postcard" {% if booking.payment_method == 'Postcard' %}selected{% endif %}>
+                            Postcard
+                        </option>
+                    </select>
+                </div>
+
+                <label>Status</label>
+                <select class="w3-select" name="status">
+                    <option value="Option" {% if booking.status == 'Option' %}selected{% endif %}>Option</option>
+                    <option value="Bestätigt" {% if booking.status == 'Bestätigt' %}selected{% endif %}>Bestätigt
+                    </option>
+                    <option value="Checked In" {% if booking.status == 'Checked In' %}selected{% endif %}>Checked In
+                    </option>
+                    <option value="Ausgecheckt" {% if booking.status == 'Ausgecheckt' %}selected{% endif %}>
+                        Ausgecheckt
+                    </option>
+                    <option value="Storniert" {% if booking.status == 'Storniert' %}selected{% endif %}>Storniert
+                    </option>
+                </select>
+
 
                 <button class="w3-button w3-blue w3-margin-top" type="submit">Speichern</button>
             </div>
@@ -150,7 +183,8 @@
         </tbody>
     </table>
 
-    <script src="/static/main.js"></script>
-    <script src="/static/dinnerOptions.js" defer></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/paymentMethod.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dinnerOptions.js') }}" defer></script>
 
 {% endblock %}

@@ -36,7 +36,9 @@ def inject_admin_status():
 def get_rooms():
     db = get_db()
     rows = db.execute("SELECT * FROM rooms").fetchall()
-    return {row['name']: row['capacity'] for row in rows}
+    rooms = {row['name']: row['capacity'] for row in rows}
+    print(rooms)  # Debugging-Ausgabe
+    return rooms
 
 
 def get_room_data():
@@ -152,12 +154,22 @@ def index():
         enriched = dict(b, age_group=age_text, total_price=price)
         arrival = datetime.strptime(b['arrival'], "%Y-%m-%d").date()
         departure = datetime.strptime(b['departure'], "%Y-%m-%d").date()
-        if b['status'] == 'Storniert':
-            lists['cancelled'].append(enriched)
-        elif arrival <= today < departure:
+        # Nur "Checked In" kommen in "Im Haus", auch wenn Abreise heute ist
+        if b['status'] == 'Checked In' and (arrival <= today < departure or departure == today):
             lists['in_house'].append(enriched)
+
+        # Wenn der Status "Ausgecheckt" ist, kommt die Buchung in "Vergangene"
+        elif b['status'] == 'Ausgecheckt' or (departure < today and b['status'] != 'Checked In'):
+            lists['past'].append(enriched)
+
+        # Wenn der Status "Storniert" ist, kommt die Buchung in "Storniert"
+        elif b['status'] == 'Storniert':
+            lists['cancelled'].append(enriched)
+
+        # Anstehende Reservierungen
         elif arrival > today:
             lists['upcoming'].append(enriched)
+
         else:
             lists['past'].append(enriched)
     return render_template('index.html', lists=lists, is_admin=is_admin_value)
@@ -258,8 +270,9 @@ def new_booking():
 
             booking_id = str(uuid.uuid4())
             hp = 'Ja' if 'hp' in data else 'Nein'
-            hp_fleisch = int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
-            hp_vegi = int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
+            # Füge eine Sicherheitsprüfung hinzu, um sicherzustellen, dass leere Felder als 0 behandelt werden
+            hp_fleisch = int(data.get('hp_fleisch', 0)) if data.get('hp_fleisch') != '' else 0
+            hp_vegi = int(data.get('hp_vegi', 0)) if data.get('hp_vegi') != '' else 0
 
             db.execute('''
                 INSERT INTO bookings
@@ -320,7 +333,27 @@ def edit_booking(id):
             db.execute('UPDATE bookings SET status = "Storniert" WHERE id = ?', (id,))
             db.commit()
 
-        hp = 'Ja' if 'hp' in data else 'Nein'
+        # Behandle Zahlungseingabe
+        payment_status = 'payment_status' in data and data['payment_status'] == 'on'  # Checkbox-Status
+        payment_method = data.get('payment_method') if payment_status else None
+
+        if data.get('status') == 'Ausgecheckt':
+            # Überprüfen, ob das Abreisedatum dem heutigen Datum entspricht
+            today = date.today().strftime("%Y-%m-%d")
+            if data['departure'] != today:
+                return "Die Buchung kann nicht auf 'Ausgecheckt' gesetzt werden, wenn das Abreisedatum nicht heute ist.", 400
+
+            # Behandle Zahlungseingabe
+            payment_status = 'payment_status' in data and data['payment_status'] == 'on'  # Checkbox-Status
+            payment_method = data.get('payment_method') if payment_status else None
+
+            # Überprüfe, ob Status geändert wurde
+            if data.get('status') == 'Ausgecheckt' and not payment_status:
+                return "Bitte markieren Sie 'Bezahlt', bevor Sie Ausgecheckt wählen.", 400
+
+        # Überprüfe, ob Status geändert wurde
+        if data.get('status') == 'Ausgecheckt' and not payment_status:
+            return "Bitte markieren Sie 'Bezahlt', bevor Sie Ausgecheckt wählen.", 400
 
         def safe_int(value):
             try:
@@ -328,6 +361,7 @@ def edit_booking(id):
             except ValueError:
                 return 0
 
+        hp = 'Ja' if 'hp' in data else 'Nein'
         hp_fleisch = safe_int(data.get('hp_fleisch', 0)) if hp == 'Ja' else 0
         hp_vegi = safe_int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
 
@@ -342,7 +376,8 @@ def edit_booking(id):
             UPDATE bookings SET
             name=?, birthdate=?, email=?, phone=?, room=?, guests=?,
             arrival=?, departure=?, hp=?, hp_fleisch=?, hp_vegi=?, status=?,
-            address=?, postal_code=?, city=?, country=?, notes=?
+            address=?, postal_code=?, city=?, country=?, notes=?,
+            payment_status=?, payment_method=?
             WHERE id=?
         ''', (
             data['name'],
@@ -362,6 +397,8 @@ def edit_booking(id):
             data['city'],
             data['country'],
             data['note'],
+            payment_status,
+            payment_method,
             id
         ))
 
@@ -508,16 +545,17 @@ def api_bookings():
 
     room_class_map = {
         "Doppelzimmer": "room-doppel",
-        "Viererzimmer 1": "room-vz1",
-        "Viererzimmer 2": "room-vz2",
-        "Sechserzimmer 1": "room-sz1",
-        "Sechserzimmer 2": "room-sz2"
+        "4er-Zimmer 1": "room-vz1",
+        "4er-Zimmer 2": "room-vz2",
+        "6er-Zimmer 1": "room-sz1",
+        "6er-Zimmer 2": "room-sz2"
     }
 
     status_classes = {
         'Option': 'option',  # Gelb
         'Bestätigt': 'confirmed',  # Blau
         'Checked In': 'checkedin',  # Grün
+        'Ausgecheckt': 'checkedout',
         'Storniert': 'cancelled'  # Rot
     }
 
@@ -634,8 +672,11 @@ def reports():
                 guest_age = None  # Setze einen Standardwert
                 if row['birthdate']:
                     guest_age = (today - datetime.strptime(row['birthdate'], "%Y-%m-%d").date()).days // 365
-                price = calculate_price(row['arrival'], row['departure'], row['guests'], row['hp'],
-                                        row['hp_fleisch'], row['hp_vegi'])
+                    price = calculate_price(row['arrival'], row['departure'], row['guests'], row['hp'],
+                                            row['hp_fleisch'] if 'hp_fleisch' in row else 0,
+                                            # Standardwert 0, wenn nicht vorhanden
+                                            row[
+                                                'hp_vegi'] if 'hp_vegi' in row else 0)  # Standardwert 0, wenn nicht vorhanden
                 report_data.append({
                     'name': row['name'],
                     'guests': row['guests'],
