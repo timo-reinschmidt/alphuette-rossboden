@@ -6,7 +6,7 @@
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js"></script>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/css/styles.css">
 {% endblock %}
 
 {% block content %}
@@ -39,9 +39,10 @@
         <span><span class="status-dot status-option"></span> Option</span>
         <span><span class="status-dot status-confirmed"></span> Bestätigt</span>
         <span><span class="status-dot status-checkedin"></span> Checked In</span>
+        <span><span class="status-dot status-checkedout"></span> Ausgecheckt</span>
         <span><span class="status-dot status-cancelled"></span> Storniert</span>
     </div>
 
     <div id="calendar"></div>
-    <script src="/static/calendar.js"></script>
+    <script src="static/js/calendar.js"></script>
 {% endblock %}

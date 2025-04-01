@@ -25,7 +25,7 @@
         {% for user in users %}
             <li>{{ user.username }} {% if user.is_admin %} (Admin) {% else %} (Standard) {% endif %}
                 <form method="POST" action="/remove_user/{{ user.id }}" style="display:inline;">
-                    <button type="submit">Entfernen</button>
+                    <button type="submit" class="w3-button w3-red w3-margin-top">Entfernen</button>
                 </form>
             </li>
         {% endfor %}
