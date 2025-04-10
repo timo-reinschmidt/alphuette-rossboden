@@ -1,3 +1,5 @@
+import os
+
 import psycopg2
 from flask.cli import load_dotenv
 from werkzeug.security import generate_password_hash

@@ -41,8 +41,6 @@ local_time = utc_time.astimezone(pytz.timezone('Europe/Zurich'))
 # Formatieren des Datums im ISO 8601-Format
 formatted_date = local_time.strftime("%Y-%m-%dT%H:%M:%S")
 
-print(formatted_date)  # Beispielausgabe: '2025-04-10T00:00:00'
-
 
 # Funktion, um die Datenbankverbindung herzustellen
 def get_db():
@@ -219,7 +217,6 @@ def index():
         'cancelled': []
     }
     for b in bookings:
-        print(f"Booking: {b}")  # Weitere Ausgaben zur Überprüfung der Buchungsdaten
         age_text, (erw, kind, baby) = get_age_distribution(b['id'], b['birthdate'])
         price = calculate_price(b['arrival'], b['departure'], erw, kind, baby, b['hp'], b['hp_fleisch'], b['hp_vegi'])
         enriched = b.copy()
