@@ -1,33 +1,53 @@
-import sqlite3
-
+import psycopg2
+from flask.cli import load_dotenv
 from werkzeug.security import generate_password_hash
 
-conn = sqlite3.connect("database.db")
+load_dotenv()
+
+# Verbindung zur PostgreSQL-Datenbank herstellen
+conn = psycopg2.connect(
+    dbname=os.getenv("DB_NAME"),  # Datenbankname aus der Umgebungsvariable
+    user=os.getenv("DB_USER"),  # Datenbankbenutzername aus der Umgebungsvariable
+    password=os.getenv("DB_PASSWORD"),  # Datenbankpasswort aus der Umgebungsvariable
+    host=os.getenv("DB_HOST"),  # Datenbankhost aus der Umgebungsvariable
+    port=os.getenv("DB_PORT")  # Datenbankport aus der Umgebungsvariable
+)
+
 cursor = conn.cursor()
 
-# Benutzer
+# Benutzer-Tabelle
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    is_admin BOOLEAN DEFAULT 0
+    is_admin BOOLEAN DEFAULT FALSE
 );
 """)
 
-# Zimmer
+# Admin-Benutzer erstellen
+hashed_pw = generate_password_hash("demo")
+cursor.execute("""
+INSERT INTO users (username, password) 
+VALUES (%s, %s)
+ON CONFLICT (username) DO NOTHING;
+""", ("admin", hashed_pw))
+
+# Zimmer-Tabelle
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS rooms (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     type TEXT,
     capacity INTEGER
 );
 """)
 
+# Einfügen der Zimmerdaten
 cursor.executemany("""
-INSERT OR IGNORE INTO rooms (name, type, capacity)
-VALUES (?, ?, ?)
+INSERT INTO rooms (name, type, capacity)
+VALUES (%s, %s, %s)
+ON CONFLICT (name) DO NOTHING;
 """, [
     ("Doppelzimmer", "Doppelzimmer", 2),
     ("4er-Zimmer 1", "Viererzimmer", 4),
@@ -36,16 +56,16 @@ VALUES (?, ?, ?)
     ("6er-Zimmer 2", "Sechserzimmer", 6)
 ])
 
-# Buchungen (UUID)
+# Buchungen-Tabelle mit UUID als Primärschlüssel
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS bookings (
-    id TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name TEXT,
     birthdate TEXT,
     room TEXT,
     guests INTEGER,
-    arrival TEXT,
-    departure TEXT,
+    arrival DATE,
+    departure DATE,
     hp TEXT DEFAULT 'Nein',
     hp_fleisch INTEGER DEFAULT 0,
     hp_vegi INTEGER DEFAULT 0,
@@ -57,40 +77,40 @@ CREATE TABLE IF NOT EXISTS bookings (
     city TEXT,
     country TEXT,
     notes TEXT,
-    payment_status BOOLEAN DEFAULT 0,
+    payment_status BOOLEAN DEFAULT FALSE,
     payment_method TEXT
 );
 """)
 
-# Gäste
+# Gäste-Tabelle
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS guests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    booking_id TEXT,
+    id SERIAL PRIMARY KEY,
+    booking_id UUID,
     name TEXT,
     birthdate TEXT,
     FOREIGN KEY(booking_id) REFERENCES bookings(id)
 );
 """)
 
-# Buchungsverlauf
+# Buchungsverlauf-Tabelle
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS booking_history (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    booking_id TEXT,
+    id SERIAL PRIMARY KEY,
+    booking_id UUID,
     status TEXT,
-    changed_at TEXT,
+    changed_at TIMESTAMP,
     changed_by INTEGER,
     FOREIGN KEY(booking_id) REFERENCES bookings(id),
     FOREIGN KEY(changed_by) REFERENCES users(id)
 );
 """)
 
-# Preisstruktur
+# Preisstruktur-Tabelle
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS prices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category TEXT,
+    id SERIAL PRIMARY KEY,
+    category TEXT UNIQUE NOT NULL,
     age_min REAL,
     age_max REAL,
     weekend_price REAL,
@@ -98,27 +118,40 @@ CREATE TABLE IF NOT EXISTS prices (
 );
 """)
 
+# Stadtsteuer-Tabelle
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS city_tax (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id SERIAL PRIMARY KEY,
     age_min REAL,
     age_max REAL,
-    tax REAL
+    tax REAL,
+    CONSTRAINT unique_age_range UNIQUE (age_min, age_max)
 );
 """)
 
+# Abendessen-Preis-Tabelle
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS dinner_prices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    age_max REAL,
+    id SERIAL PRIMARY KEY,
+    age_max REAL UNIQUE,
     price REAL
 );
 """)
 
+cursor.executemany("""
+INSERT INTO dinner_prices (age_max, price)
+VALUES (%s, %s)
+ON CONFLICT (age_max) DO NOTHING;
+""", [
+    (11.99, 20.0),
+    (200.0, 35.0)
+])
+
 # Einfügen der Preisdaten
 cursor.executemany("""
 INSERT INTO prices (category, age_min, age_max, weekend_price, weekday_price)
-VALUES (?, ?, ?, ?, ?)
+VALUES (%s, %s, %s, %s, %s)
+ON CONFLICT (category) DO NOTHING;
 """, [
     ("adult", 16.0, 200.0, 90.0, 70.0),
     ("child_12_15", 12.0, 15.99, 70.0, 50.0),
@@ -128,24 +161,17 @@ VALUES (?, ?, ?, ?, ?)
 
 cursor.executemany("""
 INSERT INTO city_tax (age_min, age_max, tax)
-VALUES (?, ?, ?)
+VALUES (%s, %s, %s)
+ON CONFLICT (age_min, age_max) DO NOTHING;
 """, [
     (16.0, 200.0, 4.0),
     (6.0, 15.99, 1.5)
 ])
 
-cursor.executemany("""
-INSERT INTO dinner_prices (age_max, price)
-VALUES (?, ?)
-""", [
-    (11.99, 20.0),
-    (200.0, 35.0)
-])
-
-# Admin
-hashed_pw = generate_password_hash("demo")
-cursor.execute("INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)", ("admin", hashed_pw))
-
+# Änderungen in der Datenbank speichern
 conn.commit()
+
+# Verbindung schließen
 conn.close()
-print("✔️ Neue Datenbank erstellt – mit UUIDs, Preisen und Zimmern.")
+
+print("✔️ Neue PostgreSQL-Datenbank erstellt – mit UUIDs, Preisen und Zimmern.")

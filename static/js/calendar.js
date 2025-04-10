@@ -4,10 +4,15 @@ document.addEventListener("DOMContentLoaded", function () {
         initialView: 'dayGridMonth',
         locale: 'de',
         height: 700,
+        timeZone: 'Europe/Zurich',
         events: '/api/bookings',
         eventContent: function (arg) {
+            const startDate = new Date(arg.event.start).toISOString();
+            const endDate = new Date(arg.event.end).toISOString();
+
             // Zugriff auf den Titel des Events (Name des Hauptbuchers und Gästezahl)
             const eventTitle = arg.event.title;
+
 
             // Erstellen eines Statuskreises
             const circle = document.createElement('span');

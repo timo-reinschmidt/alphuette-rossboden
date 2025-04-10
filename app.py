@@ -1,23 +1,55 @@
 import io
-import sqlite3
+import logging
+import os
 import uuid
 from datetime import datetime, date, timedelta
+from logging.handlers import RotatingFileHandler
 
 import pandas as pd
+import psycopg2
+import psycopg2.extras
+import pytz
 from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify, send_file
+from flask.cli import load_dotenv
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'rossboden_secret'
 
-DATABASE = 'database.db'
+load_dotenv()
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_key')
+
+if not app.debug:
+    file_handler = RotatingFileHandler('error.log', maxBytes=10240, backupCount=10)
+    file_handler.setLevel(logging.ERROR)
+    app.logger.addHandler(file_handler)
+
+# PostgreSQL Verbindungsdetails
+DATABASE = {
+    'dbname': os.getenv('DB_NAME'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'host': os.getenv('DB_HOST'),
+    'port': os.getenv('DB_PORT')
+}
+
+# Verwende datetime.now() und stelle sicher, dass UTC-Zeit verwendet wird
+utc_time = datetime.now(pytz.utc)
+
+# Konvertiere die Zeit in die gewünschte Zeitzone (z.B. Europe/Zurich)
+local_time = utc_time.astimezone(pytz.timezone('Europe/Zurich'))
+
+# Formatieren des Datums im ISO 8601-Format
+formatted_date = local_time.strftime("%Y-%m-%dT%H:%M:%S")
+
+print(formatted_date)  # Beispielausgabe: '2025-04-10T00:00:00'
 
 
+# Funktion, um die Datenbankverbindung herzustellen
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row
+        db = g._database = psycopg2.connect(**DATABASE)
+        db.autocommit = True  # Setzt autocommit auf True
     return db
 
 
@@ -33,19 +65,24 @@ def inject_admin_status():
     return dict(is_admin=session.get('is_admin', False))
 
 
+# Beispiel einer SQL-Anpassung für PostgreSQL
 def get_rooms():
     db = get_db()
-    rows = db.execute("SELECT * FROM rooms").fetchall()
-    rooms = {row['name']: row['capacity'] for row in rows}
-    print(rooms)  # Debugging-Ausgabe
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute("SELECT * FROM rooms")
+    rows = cursor.fetchall()
+    rooms = {row[1]: row[3] for row in
+             rows}  # Erstelle ein Dictionary aus Name und Kapazität (row[2] ist die Kapazität)
     return rooms
 
 
 def get_room_data():
     db = get_db()
-    rooms = db.execute("SELECT * FROM rooms").fetchall()
-    room_dict = {room['name']: room['capacity'] for room in rooms}
-    group_map = {room['name']: room['type'] for room in rooms}
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute("SELECT * FROM rooms")
+    rooms = cursor.fetchall()
+    room_dict = {room[1]: room[2] for room in rooms}  # Nutzen der richtigen Indizes für die Daten
+    group_map = {room[1]: room[3] for room in rooms}
     return room_dict, group_map
 
 
@@ -56,10 +93,12 @@ def get_age_distribution(booking_id, main_birthdate):
         ages.append(datetime.strptime(main_birthdate, "%Y-%m-%d").date())
 
     db = get_db()
-    guests = db.execute('SELECT birthdate FROM guests WHERE booking_id = ?', (booking_id,)).fetchall()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('SELECT birthdate FROM guests WHERE booking_id = %s', (booking_id,))
+    guests = cursor.fetchall()
     for g in guests:
-        if g['birthdate']:
-            ages.append(datetime.strptime(g['birthdate'], "%Y-%m-%d").date())
+        if g[0]:
+            ages.append(datetime.strptime(g[0], "%Y-%m-%d").date())
 
     erw, kind, baby = 0, 0, 0
     for b in ages:
@@ -79,8 +118,20 @@ def get_age_distribution(booking_id, main_birthdate):
 
 def calculate_price(arrival, departure, erw, kind, baby, hp, hp_fleisch, hp_vegi):
     total = 0
-    d1 = datetime.strptime(arrival, "%Y-%m-%d")
-    d2 = datetime.strptime(departure, "%Y-%m-%d")
+
+    # Stelle sicher, dass 'arrival' und 'departure' als Strings vorliegen, falls sie als datetime.date Objekte kommen
+    arrival = str(arrival) if isinstance(arrival, date) else arrival
+    departure = str(departure) if isinstance(departure, date) else departure
+
+    arrival = safe_parse_date(arrival)
+    departure = safe_parse_date(departure)
+
+    if arrival is None or departure is None:
+        print("Ungültiges Datum für Ankunft oder Abreise.")
+        return 0  # Rückgabe eines Standardwertes, wenn ein Fehler auftritt
+
+    d1 = datetime.strptime(str(arrival), "%Y-%m-%d")
+    d2 = datetime.strptime(str(departure), "%Y-%m-%d")
 
     for i in range((d2 - d1).days):
         day = d1 + timedelta(days=i)
@@ -111,12 +162,14 @@ def is_room_available(room, arrival, departure):
     query = """
         SELECT COUNT(*) as count 
         FROM bookings
-        WHERE room = ?
-        AND NOT (departure <= ? OR arrival >= ?)
+        WHERE room = %s
+        AND NOT (departure <= %s OR arrival >= %s)
     """
 
-    res = db.execute(query, (room, arrival, departure)).fetchone()
-    return res['count'] < max_count
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute(query, (room, arrival, departure))
+    res = cursor.fetchone()
+    return res[0] < max_count
 
 
 def get_booking_history(booking_id):
@@ -125,11 +178,27 @@ def get_booking_history(booking_id):
         SELECT bh.*, u.username as changed_by
         FROM booking_history bh
         JOIN users u ON bh.changed_by = u.id
-        WHERE bh.booking_id = ?
+        WHERE bh.booking_id = %s
         ORDER BY bh.changed_at DESC
     """
-    history = db.execute(query, (booking_id,)).fetchall()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute(query, (booking_id,))
+    history = cursor.fetchall()
     return history
+
+
+def safe_parse_date(date_value):
+    if isinstance(date_value, date):  # Wenn es bereits ein datetime.date ist
+        return date_value
+    if date_value in ['Ja', 'Nein', '']:  # Hier fangen wir "Ja" und "Nein" ab, die ungültige Daten sind
+        print(f"Ungültiges Datum: {date_value}")
+        return None
+    try:
+        # Falls es ein String ist, wandeln wir ihn in ein datetime.date Objekt um
+        return datetime.strptime(date_value, "%Y-%m-%d").date()
+    except ValueError:
+        print(f"Ungültiges Datum: {date_value}")
+        return None
 
 
 @app.route('/')
@@ -137,10 +206,11 @@ def index():
     if not session.get('user_id'):
         return redirect(url_for('login'))
 
-    is_admin_value = session.get('is_admin', False)  # Standardwert False setzen
+    is_admin_value = session.get('is_admin', False)
     db = get_db()
-    cur = db.execute('SELECT * FROM bookings ORDER BY arrival')
-    bookings = cur.fetchall()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('SELECT * FROM bookings ORDER BY arrival')
+    bookings = cursor.fetchall()
     today = date.today()
     lists = {
         'in_house': [],
@@ -149,11 +219,26 @@ def index():
         'cancelled': []
     }
     for b in bookings:
+        print(f"Booking: {b}")  # Weitere Ausgaben zur Überprüfung der Buchungsdaten
         age_text, (erw, kind, baby) = get_age_distribution(b['id'], b['birthdate'])
         price = calculate_price(b['arrival'], b['departure'], erw, kind, baby, b['hp'], b['hp_fleisch'], b['hp_vegi'])
-        enriched = dict(b, age_group=age_text, total_price=price)
-        arrival = datetime.strptime(b['arrival'], "%Y-%m-%d").date()
-        departure = datetime.strptime(b['departure'], "%Y-%m-%d").date()
+        enriched = b.copy()
+        enriched['age_group'] = age_text
+        enriched['total_price'] = price
+
+        arrival = b['arrival']  # Stellt sicher, dass 'arrival' aus der Buchung kommt
+        departure = b['departure']  # Stellt sicher, dass 'departure' aus der Buchung kommt
+
+        arrival = str(arrival) if isinstance(arrival, datetime) else arrival
+        departure = str(departure) if isinstance(departure, datetime) else departure
+
+        arrival = safe_parse_date(arrival)
+        departure = safe_parse_date(departure)
+
+        if arrival is None or departure is None:
+            print(f"Ungültiges Datum für Ankunft oder Abreise: {b['arrival']}, {b['departure']}")
+            continue  # Überspringe diese Buchung
+
         # Nur "Checked In" kommen in "Im Haus", auch wenn Abreise heute ist
         if b['status'] == 'Checked In' and (arrival <= today < departure or departure == today):
             lists['in_house'].append(enriched)
@@ -180,18 +265,20 @@ def export_excel():
     if not session.get('user_id'):
         return redirect(url_for('login'))
     db = get_db()
-    bookings = db.execute('SELECT * FROM bookings').fetchall()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('SELECT * FROM bookings')
+    bookings = cursor.fetchall()
     rows = []
     for b in bookings:
-        age_text, (erw, kind, baby) = get_age_distribution(b['id'], b['birthdate'])
-        price = calculate_price(b['arrival'], b['departure'], erw, kind, baby, b['dinner'])
+        age_text, (erw, kind, baby) = get_age_distribution(b[0], b[2])  # 'b[0]' ist ID und 'b[2]' das Geburtsdatum
+        price = calculate_price(b[6], b[7], erw, kind, baby, b[8], b[9], b[10])  # Verwende den richtigen Index
         rows.append({
-            'Buchungsnummer': b['id'],
-            'Name': b['name'],
-            'Zimmer': b['room'],
-            'Anreise': b['arrival'],
-            'Abreise': b['departure'],
-            'Abendessen': b['dinner'],
+            'Buchungsnummer': b[0],
+            'Name': b[1],
+            'Zimmer': b[3],
+            'Anreise': b[6],
+            'Abreise': b[7],
+            'Abendessen': b[8],
             'Altersverteilung': age_text,
             'Preis CHF': price
         })
@@ -208,10 +295,12 @@ def export_excel():
 def login():
     if request.method == 'POST':
         db = get_db()
-        user = db.execute('SELECT * FROM users WHERE username = ?', (request.form['username'],)).fetchone()
-        if user and check_password_hash(user['password'], request.form['password']):
-            session['user_id'] = user['id']
-            session['is_admin'] = user['is_admin']
+        cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute('SELECT * FROM users WHERE username = %s', (request.form['username'],))
+        user = cursor.fetchone()
+        if user and check_password_hash(user[2], request.form['password']):  # user[2] ist das Passwort
+            session['user_id'] = user[0]  # user[0] ist die ID
+            session['is_admin'] = user[3]  # user[3] ist das Admin-Feld
             return redirect(url_for('index'))
         return render_template('login.html', error='Login fehlgeschlagen')
     return render_template('login.html')
@@ -228,7 +317,8 @@ def cancel_booking(id):
     if not session.get('user_id'):
         return redirect(url_for('login'))
     db = get_db()
-    db.execute("UPDATE bookings SET status = 'Storniert' WHERE id = ?", (id,))
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute("UPDATE bookings SET status = 'Storniert' WHERE id = %s", (id,))
     db.commit()
     return redirect(url_for('index'))
 
@@ -236,19 +326,18 @@ def cancel_booking(id):
 @app.route('/delete_booking/<id>', methods=['POST'])
 def delete_booking(id):
     db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
 
     # Zuerst die Gäste der Buchung löschen
-    db.execute('DELETE FROM guests WHERE booking_id = ?', (id,))
+    cursor.execute('DELETE FROM guests WHERE booking_id = %s', (id,))
 
     # Dann die Buchung aus der Buchungstabelle löschen
-    db.execute('DELETE FROM bookings WHERE id = ?', (id,))
+    cursor.execute('DELETE FROM bookings WHERE id = %s', (id,))
 
     # Änderungen in der Datenbank speichern
     db.commit()
 
-    # Hier könnte man optional die Verfügbarkeit im Kalender oder anderen Systemen aktualisieren
-
-    return redirect(url_for('index'))  # Zurück zur Buchungsübersicht oder zur gewünschten Seite
+    return redirect(url_for('index'))
 
 
 @app.route('/new', methods=['GET', 'POST'])
@@ -260,6 +349,15 @@ def new_booking():
 
     if request.method == 'POST':
         data = request.form
+        arrival = data.get('arrival')
+        departure = data.get('departure')
+
+        # Validierung der An- und Abreisedaten
+        if not safe_parse_date(arrival):
+            return "Ungültiges Anreisedatum", 400
+        if not safe_parse_date(departure):
+            return "Ungültiges Abreisedatum", 400
+
         db = get_db()
 
         try:
@@ -270,22 +368,22 @@ def new_booking():
 
             booking_id = str(uuid.uuid4())
             hp = 'Ja' if 'hp' in data else 'Nein'
-            # Füge eine Sicherheitsprüfung hinzu, um sicherzustellen, dass leere Felder als 0 behandelt werden
             hp_fleisch = int(data.get('hp_fleisch', 0)) if data.get('hp_fleisch') != '' else 0
             hp_vegi = int(data.get('hp_vegi', 0)) if data.get('hp_vegi') != '' else 0
 
-            db.execute('''
+            cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cursor.execute('''
                 INSERT INTO bookings
                 (id, name, birthdate, room, guests, arrival, departure, hp, hp_fleisch, hp_vegi, email, phone, status, address, postal_code, city, country, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 booking_id,
                 data['name'],
                 data['birthdate'],
                 room,
                 guests,
-                data['arrival'],
-                data['departure'],
+                arrival,
+                departure,
                 hp,
                 hp_fleisch,
                 hp_vegi,
@@ -303,13 +401,13 @@ def new_booking():
                 guest_name = data.get(f'guest_name_{i}')
                 guest_birth = data.get(f'guest_birth_{i}')
                 if guest_name and guest_birth:
-                    db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)',
-                               (booking_id, guest_name, guest_birth))
+                    cursor.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (%s, %s, %s)',
+                                   (booking_id, guest_name, guest_birth))
 
             db.commit()
             return redirect(url_for('index'))
 
-        except sqlite3.Error as e:
+        except psycopg2.Error as e:
             print(f"Fehler bei der DB-Operation: {e}")
             db.rollback()
             return "Fehler beim Hinzufügen der Buchung", 500
@@ -322,15 +420,22 @@ def edit_booking(id):
     db = get_db()
     rooms = get_rooms()
 
-    booking = db.execute('SELECT * FROM bookings WHERE id = ?', (id,)).fetchone()
-    guests = db.execute('SELECT * FROM guests WHERE booking_id = ?', (id,)).fetchall()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('SELECT * FROM bookings WHERE id = %s', (id,))
+    booking = cursor.fetchone()
+
+    # Hole die Gäste der Buchung
+    cursor.execute('SELECT * FROM guests WHERE booking_id = %s', (id,))
+    guests = cursor.fetchall()
+
+    # Hole die Buchungshistorie
     history = get_booking_history(id)
 
     if request.method == 'POST':
         data = request.form
 
         if data.get('status') == 'Storniert':
-            db.execute('UPDATE bookings SET status = "Storniert" WHERE id = ?', (id,))
+            cursor.execute('UPDATE bookings SET status = "Storniert" WHERE id = %s', (id,))
             db.commit()
 
         # Behandle Zahlungseingabe
@@ -366,19 +471,19 @@ def edit_booking(id):
         hp_vegi = safe_int(data.get('hp_vegi', 0)) if hp == 'Ja' else 0
 
         new_status = data.get('status')
-        if new_status != booking['status']:
-            db.execute('''
+        if new_status != booking[1]:  # booking[1] ist der Name, daher Status
+            cursor.execute('''
                 INSERT INTO booking_history (booking_id, status, changed_at, changed_by)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
             ''', (id, new_status, datetime.now(), session.get('user_id')))
 
-        db.execute('''
+        cursor.execute('''
             UPDATE bookings SET
-            name=?, birthdate=?, email=?, phone=?, room=?, guests=?,
-            arrival=?, departure=?, hp=?, hp_fleisch=?, hp_vegi=?, status=?,
-            address=?, postal_code=?, city=?, country=?, notes=?,
-            payment_status=?, payment_method=?
-            WHERE id=?
+            name=%s, birthdate=%s, email=%s, phone=%s, room=%s, guests=%s,
+            arrival=%s, departure=%s, hp=%s, hp_fleisch=%s, hp_vegi=%s, status=%s,
+            address=%s, postal_code=%s, city=%s, country=%s, notes=%s,
+            payment_status=%s, payment_method=%s
+            WHERE id=%s
         ''', (
             data['name'],
             data['birthdate'],
@@ -402,26 +507,33 @@ def edit_booking(id):
             id
         ))
 
-        db.execute('DELETE FROM guests WHERE booking_id = ?', (id,))
+        # Lösche die alten Gäste und füge neue hinzu
+        cursor.execute('DELETE FROM guests WHERE booking_id = %s', (id,))
         for i in range(1, int(data['guests']) + 1):
             guest_name = data.get(f'guest_name_{i}')
             guest_birth = data.get(f'guest_birth_{i}')
             if guest_name and guest_birth:
-                db.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (?, ?, ?)',
-                           (id, guest_name, guest_birth))
+                cursor.execute('INSERT INTO guests (booking_id, name, birthdate) VALUES (%s, %s, %s)',
+                               (id, guest_name, guest_birth))
 
         db.commit()
         return redirect(url_for('index'))
 
-    booking = db.execute('SELECT * FROM bookings WHERE id = ?', (id,)).fetchone()
-    guests = db.execute('SELECT * FROM guests WHERE booking_id = ?', (id,)).fetchall()
+    # Hole die Buchung und die Gäste
+    cursor.execute('SELECT * FROM bookings WHERE id = %s', (id,))
+    booking = cursor.fetchone()
+    cursor.execute('SELECT * FROM guests WHERE booking_id = %s', (id,))
+    guests = cursor.fetchall()
+
     return render_template('edit_booking.html', booking=booking, guests=guests, history=history, rooms=rooms)
 
 
 def is_admin(user_id):
     db = get_db()
-    user = db.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    return user and user['is_admin'] == 1  # Überprüfe, ob der Benutzer Admin-Rechte hat
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    user = cursor.fetchone()
+    return user and user[3] == 1  # Überprüfe, ob der Benutzer Admin-Rechte hat
 
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -431,9 +543,11 @@ def admin():
 
     db = get_db()
 
-    # Preise aus der Datenbank holen
-    prices = db.execute("SELECT * FROM prices").fetchall()
-    users = db.execute("SELECT * FROM users").fetchall()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute("SELECT * FROM prices")
+    prices = cursor.fetchall()
+    cursor.execute("SELECT * FROM users")
+    users = cursor.fetchall()
     error = None
 
     if request.method == 'POST':
@@ -442,31 +556,23 @@ def admin():
             username = request.form.get('username')
             password = request.form.get('password')
 
-            # Debugging: Logge die erhaltenen Formulardaten
-            print(f"Benutzername: {username}, Passwort: {password}")
-
             # Stelle sicher, dass der Benutzername nicht bereits existiert
-            existing_user = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
+            cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
+            existing_user = cursor.fetchone()
             if existing_user:
                 return render_template('admin.html', prices=prices, users=users, error="Benutzername existiert bereits")
 
-            # Passworteingabe überprüfen
             if not username or not password:
                 return render_template('admin.html', prices=prices, users=users,
                                        error="Benutzername und Passwort dürfen nicht leer sein")
 
-            # Debugging: Logge, bevor der Benutzer hinzugefügt wird
-            print(f"Füge Benutzer hinzu: {username}")
-
             hashed_pw = generate_password_hash(password)
-            is_admin = 1 if 'is_admin' in request.form else 0  # Admin-Flag setzen
+            is_admin = 1 if 'is_admin' in request.form else 0
 
             try:
-                # Füge den Benutzer zur Datenbank hinzu
-                db.execute("INSERT INTO users (username, password, is_admin) VALUES (?, ?, ?)",
-                           (username, hashed_pw, is_admin))
-                db.commit()  # Änderungen speichern
-                print("Benutzer hinzugefügt!")  # Debugging: Bestätigung
+                cursor.execute("INSERT INTO users (username, password, is_admin) VALUES (%s, %s, %s)",
+                               (username, hashed_pw, is_admin))
+                db.commit()
             except Exception as e:
                 print(f"Fehler beim Hinzufügen des Benutzers: {e}")
                 return render_template('admin.html', prices=prices, users=users,
@@ -477,7 +583,7 @@ def admin():
         # Benutzer entfernen
         elif 'remove_user' in request.form:
             user_id = request.form.get('user_id')
-            db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
             db.commit()
 
         # Preis anpassen
@@ -486,10 +592,10 @@ def admin():
             weekend_price = float(request.form.get('weekend_price'))
             weekday_price = float(request.form.get('weekday_price'))
 
-            db.execute("""
+            cursor.execute("""
                 UPDATE prices 
-                SET weekend_price = ?, weekday_price = ? 
-                WHERE category = ?
+                SET weekend_price = %s, weekday_price = %s 
+                WHERE category = %s
             """, (weekend_price, weekday_price, category))
             db.commit()
 
@@ -513,11 +619,11 @@ def update_booking_date(booking_id):
     erw, kind, baby = get_age_distribution(booking_id)
     price = calculate_price(new_arrival, new_departure, erw, kind, baby, 'Ja', 0, 0)  # Beispiel für Halbpension
 
-    # Aktualisieren des Buchungsdatums und Preises
-    db.execute('''
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('''
         UPDATE bookings 
-        SET arrival = ?, departure = ?, total_price = ? 
-        WHERE id = ?
+        SET arrival = %s, departure = %s, total_price = %s 
+        WHERE id = %s
     ''', (new_arrival, new_departure, price, booking_id))
 
     # Änderungen in der Datenbank speichern
@@ -534,14 +640,22 @@ def calendar():
     return render_template('calendar.html')
 
 
+def format_date_to_iso(date):
+    # Überprüfen, ob das Datum ein datetime-Objekt ist und es im ISO 8601 Format umwandeln
+    if isinstance(date, datetime):
+        return date.strftime("%Y-%m-%dT%H:%M:%S")
+    return date  # Falls das Datum schon im richtigen Format ist, einfach zurückgeben
+
+
 @app.route('/api/bookings')
 def api_bookings():
     if not session.get('user_id'):
         return jsonify([])
 
     db = get_db()
-    cur = db.execute('SELECT * FROM bookings WHERE status != "Storniert"')
-    bookings = cur.fetchall()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cursor.execute('SELECT * FROM bookings WHERE status != %s', ('Storniert',))
+    bookings = cursor.fetchall()
 
     room_class_map = {
         "Doppelzimmer": "room-doppel",
@@ -563,13 +677,16 @@ def api_bookings():
     for b in bookings:
         main_guest_name = b['name']
         num_guests = b['guests']
+        start_date = b['arrival'].strftime('%Y-%m-%dT%H:%M:%S')  # Startdatum als ISO 8601
+        end_date = b['departure'].strftime('%Y-%m-%dT%H:%M:%S')  # Enddatum als ISO 8601
+
         room_class = room_class_map.get(b['room'], 'default-room')  # Zimmerfarbe zuweisen
         status_class = status_classes.get(b['status'], 'option')  # Statusfarbe zuweisen
 
         events.append({
             'title': f"{main_guest_name} ({num_guests} P)",
-            'start': b['arrival'],
-            'end': b['departure'],
+            'start': start_date,
+            'end': end_date,
             'url': f"/edit/{b['id']}",
             'extendedProps': {
                 'statusClass': status_classes.get(b['status'], 'option')  # Status wird hier zugewiesen
@@ -601,9 +718,11 @@ def reports():
                 SELECT b.name, b.guests, b.hp, b.hp_fleisch, b.hp_vegi, b.arrival, b.departure, g.name as guest_name, g.birthdate
                 FROM bookings b
                 LEFT JOIN guests g ON b.id = g.booking_id
-                WHERE b.arrival BETWEEN ? AND ?
+                WHERE b.arrival BETWEEN %s AND %s
             """
-            rows = db.execute(query, (start_date, end_date)).fetchall()
+            cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cursor.execute(query, (start_date, end_date))
+            rows = cursor.fetchall()
 
             # Berechnung des Alters der Gäste
             report_data = []
@@ -632,9 +751,11 @@ def reports():
                 FROM bookings b
                 LEFT JOIN guests g ON b.id = g.booking_id
                 LEFT JOIN rooms r ON b.room = r.name
-                WHERE b.status = 'Bestätigt' AND b.arrival <= ? AND b.departure >= ?
+                WHERE b.status = 'Bestätigt' AND b.arrival <= %s AND b.departure >= %s
             """
-            rows = db.execute(query, (today, today)).fetchall()
+            cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cursor.execute(query, (today, today))
+            rows = cursor.fetchall()
 
             # Berechnung des Alters der Gäste
             report_data = []
@@ -662,9 +783,11 @@ def reports():
                 SELECT b.name, b.guests, b.hp, b.hp_fleisch, b.hp_vegi, b.arrival, b.departure, g.name as guest_name, g.birthdate
                 FROM bookings b
                 LEFT JOIN guests g ON b.id = g.booking_id
-                WHERE b.departure = ?
+                WHERE b.departure = %s
             """
-            rows = db.execute(query, (today,)).fetchall()
+            cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            cursor.execute(query, (today,))
+            rows = cursor.fetchall()
 
             # Berechnung des Alters der Gäste und Gesamtpreis
             report_data = []
@@ -693,4 +816,4 @@ def reports():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
