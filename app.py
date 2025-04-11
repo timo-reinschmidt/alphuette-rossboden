@@ -16,21 +16,23 @@ from werkzeug.security import check_password_hash, generate_password_hash
 app = Flask(__name__)
 
 load_dotenv()
+
+# Holen der Umgebungsvariablen
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Verbindung zur PostgreSQL-Datenbank herstellen
+try:
+    connection = psycopg2.connect(DATABASE_URL, sslmode='require')
+    print("Verbindung erfolgreich!")
+except Exception as e:
+    print(f"Fehler bei der Verbindung: {e}")
+
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_key')
 
 if not app.debug:
     file_handler = RotatingFileHandler('error.log', maxBytes=10240, backupCount=10)
     file_handler.setLevel(logging.ERROR)
     app.logger.addHandler(file_handler)
-
-# PostgreSQL Verbindungsdetails
-DATABASE = {
-    'dbname': os.getenv('DB_NAME'),
-    'user': os.getenv('DB_USER'),
-    'password': os.getenv('DB_PASSWORD'),
-    'host': os.getenv('DB_HOST'),
-    'port': os.getenv('DB_PORT')
-}
 
 # Verwende datetime.now() und stelle sicher, dass UTC-Zeit verwendet wird
 utc_time = datetime.now(pytz.utc)
@@ -46,7 +48,7 @@ formatted_date = local_time.strftime("%Y-%m-%dT%H:%M:%S")
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = psycopg2.connect(**DATABASE)
+        db = g._database = psycopg2.connect(DATABASE_URL, sslmode='require')
         db.autocommit = True  # Setzt autocommit auf True
     return db
 
