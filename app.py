@@ -588,7 +588,7 @@ def admin():
                                        error="Benutzername und Passwort dürfen nicht leer sein")
 
             hashed_pw = generate_password_hash(password)
-            is_admin = True if 'is_admin' in request.form else 0
+            is_admin = True if 'is_admin' in request.form else False
 
             try:
                 cursor.execute("INSERT INTO users (username, password, is_admin) VALUES (%s, %s, %s)",
