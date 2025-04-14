@@ -148,6 +148,7 @@ def calculate_price(arrival, departure, erw, kind, baby, hp, hp_fleisch, hp_vegi
 
     d1 = datetime.strptime(str(arrival), "%Y-%m-%d")
     d2 = datetime.strptime(str(departure), "%Y-%m-%d")
+    num_nights = (d2 - d1).days
 
     for i in range((d2 - d1).days):
         day = d1 + timedelta(days=i)
@@ -159,7 +160,7 @@ def calculate_price(arrival, departure, erw, kind, baby, hp, hp_fleisch, hp_vegi
             total += erw * 70 + kind * 50
 
     # Kurtaxe pro Aufenthalt
-    total += erw * 4 + kind * 1.5
+    total += erw * 4 * num_nights + kind * 1.5 * num_nights  # Beispiel für Kurtaxe
 
     # Abendessen (jetzt HP: Halbpension) mit Fleisch und Vegi
     if hp == 'Ja':
