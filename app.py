@@ -604,8 +604,32 @@ def admin():
         # Benutzer entfernen
         elif 'remove_user' in request.form:
             user_id = request.form.get('user_id')
-            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
-            db.commit()
+            if not user_id:
+                return render_template('admin.html', error="Kein Benutzer angegeben")
+
+            try:
+                # Debugging-Ausgabe: Zeigt die user_id und die SQL-Abfrage an
+                print(f"Versuche Benutzer mit ID {user_id} zu löschen.")
+
+                cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+                user = cursor.fetchone()
+
+                if not user:
+                    print(f"Benutzer mit ID {user_id} nicht gefunden.")  # Debugging
+                    return render_template('admin.html', error="Benutzer nicht gefunden.")
+
+                # Benutzer löschen
+                cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+                db.commit()
+
+                print(f"Benutzer mit ID {user_id} erfolgreich gelöscht.")  # Debugging
+                return redirect(url_for('admin'))
+
+            except Exception as e:
+                # Fehlerbehandlung und Logging
+                db.rollback()
+                print(f"Fehler beim Löschen des Benutzers: {e}")
+                return render_template('admin.html', error="Fehler beim Löschen des Benutzers")
 
         # Preis anpassen
         elif 'update_price' in request.form:
