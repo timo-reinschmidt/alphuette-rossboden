@@ -2,7 +2,6 @@ import os
 
 import psycopg2
 from flask.cli import load_dotenv
-from werkzeug.security import generate_password_hash
 
 load_dotenv()
 
@@ -28,12 +27,12 @@ CREATE TABLE IF NOT EXISTS users (
 """)
 
 # Admin-Benutzer erstellen
-hashed_pw = generate_password_hash("demo")
+password = "demo"  # Das Passwort im Klartext
 cursor.execute("""
-INSERT INTO users (username, password) 
+INSERT INTO users (username, password, is_admin) 
 VALUES (%s, %s)
 ON CONFLICT (username) DO NOTHING;
-""", ("admin", hashed_pw))
+""", ("timo.reinschmidt", password, True))
 
 # Zimmer-Tabelle
 cursor.execute("""

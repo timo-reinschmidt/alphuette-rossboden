@@ -9,23 +9,39 @@ import pandas as pd
 import psycopg2
 import psycopg2.extras
 import pytz
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify, send_file
-from flask.cli import load_dotenv
 from werkzeug.security import check_password_hash, generate_password_hash
 
+load_dotenv()
 app = Flask(__name__)
 
-load_dotenv()
-
-# Holen der Umgebungsvariablen
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL ist nicht gesetzt!")
 
-# Verbindung zur PostgreSQL-Datenbank herstellen
-try:
-    connection = psycopg2.connect(DATABASE_URL, sslmode='require')
-    print("Verbindung erfolgreich!")
-except Exception as e:
-    print(f"Fehler bei der Verbindung: {e}")
+# Erstelle das Passwort-Hash
+hashed_password = generate_password_hash("Rossboden2025?")
+is_correct = check_password_hash(hashed_password, "Rossboden2025?")
+print(hashed_password)
+print(is_correct)
+
+
+# Fehlerbehandlung für die Verbindung zur DB
+def test_connection():
+    try:
+        connection = psycopg2.connect(DATABASE_URL, sslmode='require')
+        print("Verbindung erfolgreich!")
+        cursor = connection.cursor()
+        cursor.execute("SELECT version();")  # Überprüfe, ob die Datenbankversion abgerufen werden kann
+        db_version = cursor.fetchone()
+        print(f"Datenbankversion: {db_version}")
+        connection.close()
+    except Exception as e:
+        print(f"Fehler bei der Verbindung zur Datenbank: {e}")
+
+
+test_connection()
 
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'default_key')
 
@@ -297,10 +313,16 @@ def login():
         cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
         cursor.execute('SELECT * FROM users WHERE username = %s', (request.form['username'],))
         user = cursor.fetchone()
-        if user and check_password_hash(user[2], request.form['password']):  # user[2] ist das Passwort
+        # Debugging-Ausgabe
+        print(f"Benutzer: {user}")  # Zeigt die abgerufenen Daten in der Konsole an
+
+        if user and request.form['password'] == user[2]:  # user[2] ist das Passwort
             session['user_id'] = user[0]  # user[0] ist die ID
             session['is_admin'] = user[3]  # user[3] ist das Admin-Feld
+            print(f"Session ID: {session.get('user_id')}, Admin: {session.get('is_admin')}")
+            print(f"Redirecting to: {url_for('index')}")
             return redirect(url_for('index'))
+        print("Login fehlgeschlagen!")
         return render_template('login.html', error='Login fehlgeschlagen')
     return render_template('login.html')
 
@@ -566,11 +588,11 @@ def admin():
                                        error="Benutzername und Passwort dürfen nicht leer sein")
 
             hashed_pw = generate_password_hash(password)
-            is_admin = 1 if 'is_admin' in request.form else 0
+            is_admin = True if 'is_admin' in request.form else 0
 
             try:
                 cursor.execute("INSERT INTO users (username, password, is_admin) VALUES (%s, %s, %s)",
-                               (username, hashed_pw, is_admin))
+                               (username, password, is_admin))
                 db.commit()
             except Exception as e:
                 print(f"Fehler beim Hinzufügen des Benutzers: {e}")
@@ -815,4 +837,4 @@ def reports():
 
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
