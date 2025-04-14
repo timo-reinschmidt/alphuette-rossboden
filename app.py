@@ -23,8 +23,6 @@ if not DATABASE_URL:
 # Erstelle das Passwort-Hash
 hashed_password = generate_password_hash("Rossboden2025?")
 is_correct = check_password_hash(hashed_password, "Rossboden2025?")
-print(hashed_password)
-print(is_correct)
 
 
 # Fehlerbehandlung für die Verbindung zur DB
@@ -143,7 +141,6 @@ def calculate_price(arrival, departure, erw, kind, baby, hp, hp_fleisch, hp_vegi
     departure = safe_parse_date(departure)
 
     if arrival is None or departure is None:
-        print("Ungültiges Datum für Ankunft oder Abreise.")
         return 0  # Rückgabe eines Standardwertes, wenn ein Fehler auftritt
 
     d1 = datetime.strptime(str(arrival), "%Y-%m-%d")
@@ -164,7 +161,8 @@ def calculate_price(arrival, departure, erw, kind, baby, hp, hp_fleisch, hp_vegi
 
     # Abendessen (jetzt HP: Halbpension) mit Fleisch und Vegi
     if hp == 'Ja':
-        total += erw * 35 + (hp_fleisch) * 20 + (hp_vegi) * 20
+        total += erw * 35 * num_nights
+        total += kind * 20 * num_nights
 
     return round(total, 2)
 
@@ -208,13 +206,11 @@ def safe_parse_date(date_value):
     if isinstance(date_value, date):  # Wenn es bereits ein datetime.date ist
         return date_value
     if date_value in ['Ja', 'Nein', '']:  # Hier fangen wir "Ja" und "Nein" ab, die ungültige Daten sind
-        print(f"Ungültiges Datum: {date_value}")
         return None
     try:
         # Falls es ein String ist, wandeln wir ihn in ein datetime.date Objekt um
         return datetime.strptime(date_value, "%Y-%m-%d").date()
     except ValueError:
-        print(f"Ungültiges Datum: {date_value}")
         return None
 
 
@@ -229,8 +225,10 @@ def index():
     cursor.execute('SELECT * FROM bookings ORDER BY arrival')
     bookings = cursor.fetchall()
     today = date.today()
+    day_before_today = today - timedelta(days=1)
     lists = {
         'in_house': [],
+        'today_arrivals': [],
         'upcoming': [],
         'past': [],
         'cancelled': []
@@ -260,7 +258,7 @@ def index():
             lists['in_house'].append(enriched)
 
         # Wenn der Status "Ausgecheckt" ist, kommt die Buchung in "Vergangene"
-        elif b['status'] == 'Ausgecheckt' or (departure < today and b['status'] != 'Checked In'):
+        elif b['status'] == 'Ausgecheckt' and departure <= day_before_today:
             lists['past'].append(enriched)
 
         # Wenn der Status "Storniert" ist, kommt die Buchung in "Storniert"
@@ -270,6 +268,9 @@ def index():
         # Anstehende Reservierungen
         elif arrival > today:
             lists['upcoming'].append(enriched)
+
+        elif arrival == today:
+            lists['today_arrivals'].append(enriched)
 
         else:
             lists['past'].append(enriched)

@@ -18,6 +18,11 @@
         {% include 'partials/booking_card.html' %}
     {% endfor %}
 
+    <h3 class="w3-text-green">🔵 Heutige Anreisen</h3>
+    {% for booking in lists['today_arrivals'] %}
+        {% include 'partials/booking_card.html' %}
+    {% endfor %}
+
     <h3 class="w3-text-green">🟡 Anstehende Reservationen</h3>
     {% for booking in lists.upcoming %}
         {% include 'partials/booking_card.html' %}
