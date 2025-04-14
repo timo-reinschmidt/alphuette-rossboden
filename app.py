@@ -604,6 +604,12 @@ def admin():
         # Benutzer entfernen
         elif 'remove_user' in request.form:
             user_id = request.form.get('user_id')
+
+            # Previous code used to remove users:
+            # elif 'remove_user' in request.form:
+            # user_id = request.form.get('user_id')
+            # cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            # db.commit()
             if not user_id:
                 return render_template('admin.html', error="Kein Benutzer angegeben")
 
