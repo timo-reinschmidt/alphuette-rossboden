@@ -181,3 +181,23 @@ button.w3-red:hover {
         max-width: 200px; /* Adjust the logo size for smaller screens */
     }
 }
+
+.details {
+    margin-top: 10px;
+    background-color: #f9f9f9;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.toggle-details-btn {
+    background-color: #4CAF50; /* Grün */
+    color: white;
+    padding: 4px 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.toggle-details-btn:hover {
+    background-color: #45a049;
+}
