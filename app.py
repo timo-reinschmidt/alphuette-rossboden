@@ -247,11 +247,13 @@ def index():
         'cancelled': []
     }
     for b in bookings:
+        booking_number = str(b['id'])[:8]
         age_text, (erw, kind, baby) = get_age_distribution(b['id'], b['birthdate'])
         price = calculate_price(b['arrival'], b['departure'], erw, kind, baby, b['hp'], b['hp_fleisch'], b['hp_vegi'])
         enriched = b.copy()
         enriched['age_group'] = age_text
         enriched['total_price'] = price
+        enriched['booking_number'] = booking_number
 
         arrival = b['arrival']  # Stellt sicher, dass 'arrival' aus der Buchung kommt
         departure = b['departure']  # Stellt sicher, dass 'departure' aus der Buchung kommt
@@ -290,29 +292,60 @@ def index():
     return render_template('index.html', lists=lists, is_admin=is_admin_value)
 
 
-@app.route('/export')
+@app.route('/export', methods=['GET', 'POST'])
 def export_excel():
     if not session.get('user_id'):
         return redirect(url_for('login'))
-    db = get_db()
-    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cursor.execute('SELECT * FROM bookings')
-    bookings = cursor.fetchall()
+
+    # Wenn ein Zeitraum ausgewählt wurde (POST-Anfrage)
+    if request.method == 'POST':
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+
+        db = get_db()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+        # SQL-Abfrage mit Zeitraum
+        query = """
+            SELECT * FROM bookings
+            WHERE arrival BETWEEN %s AND %s
+        """
+        cursor.execute(query, (start_date, end_date))
+        bookings = cursor.fetchall()
+    else:
+        # Standardabfrage, wenn kein Zeitraum angegeben wurde
+        db = get_db()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute('SELECT * FROM bookings')
+        bookings = cursor.fetchall()
+
     rows = []
     for b in bookings:
-        age_text, (erw, kind, baby) = get_age_distribution(b[0], b[2])  # 'b[0]' ist ID und 'b[2]' das Geburtsdatum
-        price = calculate_price(b[6], b[7], erw, kind, baby, b[8], b[9], b[10])  # Verwende den richtigen Index
+        # Altersverteilung der Gäste abrufen
+        age_text, (erw, kind, baby) = get_age_distribution(b[0], b[2])  # b[0] = booking_id, b[2] = birthdate
+        # Berechnung des Preises
+        price = calculate_price(b[6], b[7], erw, kind, baby, b[8], b[9], b[10])  # b[6] = arrival, b[7] = departure
+        # Fleisch- und Vegan-Anzahl für das Abendessen
+        hp_fleisch = b[9] if b[8] == 'Ja' else 0
+        hp_vegi = b[10] if b[8] == 'Ja' else 0
+
         rows.append({
-            'Buchungsnummer': b[0],
-            'Name': b[1],
-            'Zimmer': b[3],
-            'Anreise': b[6],
-            'Abreise': b[7],
-            'Abendessen': b[8],
+            'Buchungsnummer': b[0],  # b[0] = booking_id
+            'Name': b[1],  # b[1] = name
+            'Status': b[12],  # b[11] = status
+            'Zimmer': b[3],  # b[3] = room
+            'Anreise': b[5],  # b[6] = arrival
+            'Abreise': b[6],  # b[7] = departure
+            'Fleisch': b[8],
+            'Vegan': b[9],
             'Altersverteilung': age_text,
-            'Preis CHF': price
+            'Notizen': b[17]
         })
+
     df = pd.DataFrame(rows)
+
+    df = df.sort_values(by='Anreise', ascending=True)  # Nach Anreise-Datum sortieren
+
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Buchungen')

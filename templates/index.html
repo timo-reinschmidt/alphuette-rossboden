@@ -4,7 +4,42 @@
 {% block content %}
     <h2>Reservationen</h2>
 
-    <a href="/export" class="w3-button w3-green w3-margin-bottom">Export als Excel</a>
+    <a href="/export" class="w3-button w3-green w3-margin-bottom">Alle Reservationen als Excel exportieren</a>
+
+    <!-- Button zum Öffnen des modalen Zeitraums -->
+    <div class="w3-container w3-margin-bottom">
+        <button class="w3-button w3-teal" onclick="openExportModal()">Excel Export: Zeitraum wählen</button>
+    </div>
+
+    <!-- MODALES EXPORT-FORMULAR -->
+    <div id="exportModal" class="w3-modal">
+        <div class="w3-modal-content w3-animate-top w3-card-4" style="position: relative;">
+            <!-- Schließen (X) oben rechts -->
+            <span onclick="closeExportModal()" class="w3-button w3-display-topright w3-text-red"
+                  style="font-size: 24px; font-weight: bold;">×</span>
+
+            <header class="w3-container">
+                <h2><b>Zeitraum auswählen</b></h2>
+            </header>
+
+            <form method="POST" action="/export" class="w3-container">
+                <p>
+                    <label><b>Startdatum:</b></label>
+                    <input class="w3-input w3-margin-bottom" type="date" name="start_date" required>
+                </p>
+                <p>
+                    <label><b>Enddatum:</b></label>
+                    <input class="w3-input w3-margin-bottom" type="date" name="end_date" required>
+                </p>
+
+                <div class="w3-padding">
+                    <button class="w3-button w3-blue w3-margin-right" type="submit">Exportieren</button>
+                    <button class="w3-button w3-light-grey" type="button" onclick="closeExportModal()">Abbrechen
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="w3-container w3-margin-bottom">
         <input type="text" id="searchInput" class="w3-input w3-border" placeholder="Suche nach Buchungen...">
@@ -38,6 +73,15 @@
         {% include 'partials/booking_card.html' %}
     {% endfor %}
 
-    <script src="static/js/main.js"></script>
-    <script src="static/js/searchFunction.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/searchFunction.js') }}"></script>
+    <script>
+        function openExportModal() {
+            document.getElementById('exportModal').style.display = 'block';
+        }
+
+        function closeExportModal() {
+            document.getElementById('exportModal').style.display = 'none';
+        }
+    </script>
 {% endblock %}
