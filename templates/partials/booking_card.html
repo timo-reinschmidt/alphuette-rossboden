@@ -1,5 +1,6 @@
 <div class="booking-card w3-card w3-padding w3-margin-bottom w3-white">
-    <b>{{ booking.name }}</b> – {{ booking.room }}, {{ booking.guests }} Pers. ({{ booking.age_group }}) <a
+    <b>{{ booking.name }}</b> – Res# {{ booking.booking_number }} - {{ booking.room }}, {{ booking.guests }} Pers.
+    ({{ booking.age_group }}) <a
         href="/edit/{{ booking.id }}" class="w3-button w3-blue w3-small w3-margin-top"
         style="float: right;">Bearbeiten</a><br>
     {{ booking.arrival }} bis {{ booking.departure }}

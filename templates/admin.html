@@ -24,9 +24,29 @@
     <ul>
         {% for user in users %}
             <li>{{ user.username }} {% if user.is_admin %} (Admin) {% else %} (Standard) {% endif %}
-                <form method="POST" action="{{ url_for('remove_user', user_id=user['id']) }}">
-                    <button class="w3-button w3-red w3-margin-top" type="submit">Benutzer löschen</button>
-                </form>
+                <button class="w3-button w3-red w3-margin-top" type="button" onclick="openDeleteModal('{{ user.id }}')">
+                    Benutzer
+                    löschen
+                </button>
+                <div id="deleteModal-{{ user.id }}" class="w3-modal">
+                    <div class="w3-modal-content w3-animate-top w3-card-4">
+                        <header class="w3-container w3-red">
+                            <h3>Benutzer wirklich löschen?</h3>
+                        </header>
+                        <div class="w3-container">
+                            <p>Möchtest du diesen Benutzer wirklich dauerhaft löschen?</p>
+                        </div>
+                        <footer class="w3-container w3-padding">
+                            <form method="post" action="/remove_user/{{ user.id }}" class="w3-right">
+                                <button class="w3-button w3-red" type="submit">Ja, löschen</button>
+                                <button class="w3-button w3-light-grey" type="button"
+                                        onclick="closeDeleteModal('{{ user.id }}')">
+                                    Abbrechen
+                                </button>
+                            </form>
+                        </footer>
+                    </div>
+                </div>
             </li>
         {% endfor %}
     </ul>
@@ -65,5 +85,15 @@
             </tr>
         {% endfor %}
     </table>
+
+    <script>
+        function openDeleteModal(userId) {
+            document.getElementById('deleteModal-' + userId).style.display = 'block';
+        }
+
+        function closeDeleteModal(userId) {
+            document.getElementById('deleteModal-' + userId).style.display = 'none';
+        }
+    </script>
 
 {% endblock %}
