@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/w3.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!--- <link rel="stylesheet" href="https://www.w3schools.com/w3css/5/w3.css"> -->
     {% block head %}{% endblock %}
 </head>
 <body>
@@ -19,6 +20,7 @@
         {% if is_admin %}
             <a href="/admin" class="w3-bar-item w3-button w3-hover-opacity">Stammdaten</a>
         {% endif %}
+        <a href="/change_password" class="w3-bar-item w3-button w3-hover-opacity">Passwort ändern</a>
         <a href="/logout" class="w3-bar-item w3-button w3-hover-opacity w3-right">Logout</a>
         <a href="javascript:void(0);" class="icon" onclick="myFunction()">
             <i class="fa fa-bars"></i>
