@@ -18,6 +18,13 @@
             <a href="/admin" class="w3-bar-item w3-button w3-hover-opacity">Stammdaten</a>
         {% endif %}
         <a href="/logout" class="w3-bar-item w3-button w3-hover-opacity w3-right">Logout</a>
+        <span class="user-info">
+        {% if user_name %}
+            Willkommen, {{ user_name }}
+        {% else %}
+            Nicht eingeloggt
+        {% endif %}
+        </span>
     </div>
 {% endif %}
 

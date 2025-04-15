@@ -182,6 +182,12 @@ button.w3-red:hover {
     }
 }
 
+.user-info {
+    float: right;
+    margin-right: 100px; /* Optional, für etwas Abstand vom Logout-Button */
+    margin-top: 10px;
+}
+
 .details {
     margin-top: 10px;
     background-color: #f9f9f9;

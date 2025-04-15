@@ -79,6 +79,19 @@ def inject_admin_status():
     return dict(is_admin=session.get('is_admin', False))
 
 
+@app.context_processor
+def inject_user():
+    user_name = None
+    if 'user_id' in session:
+        db = get_db()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cursor.execute("SELECT username FROM users WHERE id = %s", (session['user_id'],))
+        user = cursor.fetchone()
+        if user:
+            user_name = user['username']
+    return dict(user_name=user_name)
+
+
 # Beispiel einer SQL-Anpassung für PostgreSQL
 def get_rooms():
     db = get_db()
@@ -318,9 +331,9 @@ def login():
         # Debugging-Ausgabe
         print(f"Benutzer: {user}")  # Zeigt die abgerufenen Daten in der Konsole an
 
-        if user and request.form['password'] == user[2]:  # user[2] ist das Passwort
-            session['user_id'] = user[0]  # user[0] ist die ID
-            session['is_admin'] = user[3]  # user[3] ist das Admin-Feld
+        if user and check_password_hash(user['password'], request.form['password']):  # user[2] ist das Passwort
+            session['user_id'] = user['id']
+            session['is_admin'] = user['is_admin']
             print(f"Session ID: {session.get('user_id')}, Admin: {session.get('is_admin')}")
             print(f"Redirecting to: {url_for('index')}")
             return redirect(url_for('index'))
@@ -594,7 +607,7 @@ def admin():
 
             try:
                 cursor.execute("INSERT INTO users (username, password, is_admin) VALUES (%s, %s, %s)",
-                               (username, password, is_admin))
+                               (username, hashed_pw, is_admin))
                 db.commit()
             except Exception as e:
                 print(f"Fehler beim Hinzufügen des Benutzers: {e}")
@@ -655,6 +668,27 @@ def admin():
         return redirect(url_for('admin'))
 
     return render_template('admin.html', prices=prices, users=users, error=error)
+
+
+@app.route('/remove_user/<int:user_id>', methods=['POST'])
+def remove_user(user_id):
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    try:
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            return render_template('admin.html', error="Benutzer nicht gefunden.")
+
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        db.commit()
+        return redirect(url_for('admin'))
+
+    except Exception as e:
+        db.rollback()
+        return render_template('admin.html', error=f"Fehler beim Löschen des Benutzers: {e}")
 
 
 @app.route('/update_booking_date/<booking_id>', methods=['POST'])
