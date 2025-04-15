@@ -24,8 +24,8 @@
     <ul>
         {% for user in users %}
             <li>{{ user.username }} {% if user.is_admin %} (Admin) {% else %} (Standard) {% endif %}
-                <form method="POST" action="/remove_user/{{ user.id }}" style="display:inline;">
-                    <button type="submit" class="w3-button w3-red w3-margin-top">Entfernen</button>
+                <form method="POST" action="{{ url_for('remove_user', user_id=user['id']) }}">
+                    <button class="w3-button w3-red w3-margin-top" type="submit">Benutzer löschen</button>
                 </form>
             </li>
         {% endfor %}
