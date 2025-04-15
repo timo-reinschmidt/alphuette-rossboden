@@ -155,13 +155,15 @@
             </div>
         </div>
     </form>
+    <div class="w3-margin-top" style="display: flex; gap: 12px;">
+        <form method="post" action="/cancel_booking/{{ booking.id }}"
+              onsubmit="return confirm('Buchung wirklich stornieren?');">
+            <button class="w3-button w3-red w3-margin-top">Buchung stornieren</button>
+        </form>
 
-    <form method="post" action="/cancel_booking/{{ booking.id }}"
-          onsubmit="return confirm('Buchung wirklich stornieren?');">
-        <button class="w3-button w3-red w3-margin-top">Buchung stornieren</button>
-    </form>
-
-    <button class="w3-button w3-red w3-margin-top" type="button" onclick="openDeleteModal()">Buchung löschen</button>
+        <button class="w3-button w3-red w3-margin-top" type="button" onclick="openDeleteModal()">Buchung löschen
+        </button>
+    </div>
     <div id="deleteModal" class="w3-modal">
         <div class="w3-modal-content w3-animate-top w3-card-4">
             <header class="w3-container w3-red">

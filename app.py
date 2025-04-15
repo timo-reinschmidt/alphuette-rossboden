@@ -339,7 +339,9 @@ def export_excel():
             'Fleisch': b[8],
             'Vegan': b[9],
             'Altersverteilung': age_text,
-            'Notizen': b[17]
+            'Notizen': b[17],
+            'Bezahlt': b[18],
+            'Zahlart': b[19],
         })
 
     df = pd.DataFrame(rows)
@@ -366,9 +368,8 @@ def login():
 
         if user and check_password_hash(user['password'], request.form['password']):  # user[2] ist das Passwort
             session['user_id'] = user['id']
+            session['user'] = user['username']
             session['is_admin'] = user['is_admin']
-            print(f"Session ID: {session.get('user_id')}, Admin: {session.get('is_admin')}")
-            print(f"Redirecting to: {url_for('index')}")
             return redirect(url_for('index'))
         print("Login fehlgeschlagen!")
         return render_template('login.html', error='Login fehlgeschlagen')
