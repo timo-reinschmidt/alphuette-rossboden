@@ -10,7 +10,7 @@ import psycopg2
 import psycopg2.extras
 import pytz
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify, send_file, flash
 from werkzeug.security import check_password_hash, generate_password_hash
 
 load_dotenv()
@@ -934,6 +934,36 @@ def reports():
             reports.append(('Heutige Abreise', report_data))
 
     return render_template('reports.html', reports=reports, error=error)
+
+
+@app.route('/change_password', methods=['GET', 'POST'])
+def change_password():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    db = get_db()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+    if request.method == 'POST':
+        current_pw = request.form['current_password']
+        new_pw = request.form['new_password']
+        confirm_pw = request.form['confirm_password']
+
+        cursor.execute('SELECT password FROM users WHERE id = %s', (session['user_id'],))
+        user = cursor.fetchone()
+
+        if not user or not check_password_hash(user['password'], current_pw):
+            flash('Das aktuelle Passwort ist falsch.', 'error')
+        elif new_pw != confirm_pw:
+            flash('Die neuen Passwörter stimmen nicht überein.', 'error')
+        else:
+            hashed = generate_password_hash(new_pw)
+            cursor.execute('UPDATE users SET password = %s WHERE id = %s', (hashed, session['user_id']))
+            db.commit()
+            flash('Passwort erfolgreich geändert.', 'success')
+            return redirect(url_for('index'))
+
+    return render_template('change_password.html')
 
 
 if __name__ == '__main__':
